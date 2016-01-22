@@ -22,6 +22,16 @@ def send_email(smtpserver, fromaddr, toaddrs, subject, body,
         Address from.
     :param toaddrs:
         List of receipt addresses.
+    :param subject:
+        String of subject.
+    :param body:
+        String of body.
+    :param att_file: (optional)
+        Path to file to attach. If ``None`` then don't attach any file.
+        (default: ``None``)
+    :param tls: (optional)
+        Bool - use TLS? (default: ``True``)
+        
     Note that by default, this looks to check your netrc credentials
     to use this feature, create a .netrc file, so that only you can read and
     write it
@@ -31,6 +41,7 @@ def send_email(smtpserver, fromaddr, toaddrs, subject, body,
     and then add the information for the gmail smtp server, i.e.
     ``machine smtp.gmail.com login yourusername@gmail.com password
     yourpassword``
+    
     """
     msg = MIMEMultipart()
     msg['From'] = fromaddr

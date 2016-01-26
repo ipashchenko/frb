@@ -66,7 +66,7 @@ sefd_dict = {'RADIO-AS': {'K': {'L': 46700., 'R': 36800},
              'ATCA104': {'C': {'L': None, 'R': None},
                          'L': {'L': None, 'R': None}}}
                          
-                         
+# TODO: Implement ``band``, ``ignored`` & ``loss_func`` functionality                         
 def select_antenna(antenna, band, n_small=2, n_big=1, d_lim=50., ignored=None,
                    loss_func=None):
     """
@@ -94,4 +94,22 @@ def select_antenna(antenna, band, n_small=2, n_big=1, d_lim=50., ignored=None,
         List of antenna. First goes ``n_big`` big and remaining are ``n_small``
         small.
     """
-    pass
+    big_list = list()
+    small_list = list()
+    antenna = sorted(antenna, key=lambda x: diameters_dict[x])
+    try:
+        big_list = [ant for ant in antenna if diameters_dict[ant] > d_lim]
+    except KeyError:
+        print("Provide diameter value for antenna {}".format(ant))
+    # Check - at least ``n_big`` big antenna in list
+    if len(big_list) < n_big:
+        raise Exception("No {} telescopes with D > {} m in list".format(n_big, d_lim))
+    small_list = [ant for ant in antenna if diameters_dict[ant] < d_lim]
+    # Check - at least ``n_small`` small antenna in list
+    if len(small_list) < n_small:
+        raise Exception("No {} telescopes with D < {} m in list".format(n_small, d_lim))
+    
+    return big_list, small_list    
+    
+      
+    

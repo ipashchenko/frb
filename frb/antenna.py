@@ -1,5 +1,16 @@
+# Diameters
+diameters_dict = {'RADIO-AS': None, 'GBT-VLBA': None, 'EFLSBERG': None,
+                  'YEBES40M': None, 'ZELENCHK': None, 'EVPTRIYA': None,
+                  'SVETLOE': None, 'BADARY': None, 'TORUN': None,
+                  'ARECIBO': None, 'WSTRB-07': None,  'VLA-N8': None,
+                  'KALYAZIN': None, 'MEDICINA': None, 'NOTO': None,
+                  'HARTRAO': None, 'HOBART26': None, 'MOPRA': None,
+                  'WARK12M': None, 'TIDBIN64': None, 'DSS63': None,
+                  'PARKES': None, 'USUDA64': None, 'JODRELL2': None,
+                  'ATCA104': None}
+
 # Default SEFDs of antenna
-SEFD_dict = {'RADIO-AS': {'K': {'L': 46700., 'R': 36800},
+sefd_dict = {'RADIO-AS': {'K': {'L': 46700., 'R': 36800},
                           'C': {'L': 11600., 'R': None},
                           'L': {'L': 2760., 'R': 2930.}},
              'GBT-VLBA': {'K': {'L': 23., 'R': 23.},

@@ -10,16 +10,12 @@ diameters_dict = {'RADIO-AS': None, 'GBT-VLBA': None, 'EFLSBERG': None,
                   'ATCA104': None}
 
                          
-# TODO: Implement ``band``, ``ignored`` & ``loss_func`` functionality                         
-def select_antenna(antenna, band, n_small=2, n_big=1, d_lim=50., ignored=None,
-                   loss_func=None):
+def select_antenna(antenna, n_small=2, n_big=1, d_lim=50., ignored=None):
     """
     Function that selects antenna.
     
     :param antenna:
         Iterable of antenna.
-    :param band:
-        Frequency band. (``K``, ``C``, ``L`` or ``P``)
     :param n_small: (optional)
         Number of small antenn to select. (default: ``2``)
     :param n_big: (optional)
@@ -29,10 +25,6 @@ def select_antenna(antenna, band, n_small=2, n_big=1, d_lim=50., ignored=None,
     :param ignored: (optional)
         Iterable of ignored antenna. If ``None`` then don't ignore any.
         (default: ``None``)
-    :param loss_func: (optional)
-        Callable that represents a loss function assosciated with given diameter ``d``
-        and SEFD ``sefd``. ``loss_func(d, sefd)`` represents losses. If ``None`` then
-        don't use it in selecting antenna.
         
     :return:
         List of antenna. First goes ``n_big`` big and remaining are ``n_small``

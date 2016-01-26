@@ -32,6 +32,9 @@ def select_antenna(antenna, n_small=2, n_big=1, d_lim=50., ignored=None):
     """
     big_list = list()
     small_list = list()
+    if ignored:
+      for ant in ignored:
+        antenna.remove(ant)
     antenna = sorted(antenna, key=lambda x: diameters_dict[x])
     try:
         big_list = [ant for ant in antenna if diameters_dict[ant] > d_lim]

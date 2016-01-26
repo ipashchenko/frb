@@ -65,3 +65,33 @@ sefd_dict = {'RADIO-AS': {'K': {'L': 46700., 'R': 36800},
                           'L': {'L': 320., 'R': 320.}},
              'ATCA104': {'C': {'L': None, 'R': None},
                          'L': {'L': None, 'R': None}}}
+                         
+                         
+def select_antenna(antenna, band, n_small=2, n_big=1, d_lim=50., ignored=None,
+                   loss_func=None):
+    """
+    Function that selects antenna.
+    
+    :param antenna:
+        Iterable of antenna.
+    :param band:
+        Frequency band. (``K``, ``C``, ``L`` or ``P``)
+    :param n_small: (optional)
+        Number of small antenn to select. (default: ``2``)
+    :param n_big: (optional)
+        Number of big antenna to select. (default: ``1``)
+    :param d_lim: (optional)
+        Diameter that defines ``big`` and ``small`` antenna. (default: ``50.0``)
+    :param ignored: (optional)
+        Iterable of ignored antenna. If ``None`` then don't ignore any.
+        (default: ``None``)
+    :param loss_func: (optional)
+        Callable that represents a loss function assosciated with given diameter ``d``
+        and SEFD ``sefd``. ``loss_func(d, sefd)`` represents losses. If ``None`` then
+        don't use it in selecting antenna.
+        
+    :return:
+        List of antenna. First goes ``n_big`` big and remaining are ``n_small``
+        small.
+    """
+    pass

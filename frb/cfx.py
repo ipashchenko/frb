@@ -1,23 +1,12 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 21 12:10:44 2016
+""" Dealing with cfx files """
 
-@author: osh
-"""
-### define global Dropbox path and user scrips path
-import re
-
-def dir_scan(datadir):
-    datadir = os.path.abspath(datadir)
-    filelist = []
-    for root, subdirs, files in os.walk(datadir):
-        for filename in files:
-            file_path = os.path.join(root, filename)
-            filelist.append(file_path)
-    return filelist
+import os, re, fnmatch
+#from config import config
 
 def ra_code(string):
     """ find RA code in string """
+    code_pattern = 'ra{0,1}[efgk]s{0,1}\d{2}[a-z][0-9a-z]{0,1}'
     code = re.search(code_pattern, string.lower())
     if not code:
         print "No code found"
@@ -35,55 +24,52 @@ def ra_code(string):
         code = c
     return code
 
-def get_cfx(code):
-
+def get_cfx(cfx_path, code):
+    """ """
     cfxpattern = 'radioastron_%s*.cfx' % code.lower()
+    cfx_files = dict()
     cfxlist = []
-    for fname in os.listdir(cfx_dir):
+    for fname in os.listdir(cfx_path):
         if fnmatch.fnmatch(fname.lower(), cfxpattern):
+            cfx_version = re.search('(?<=_V)\d{1,2}', fname)
+            cfx_band = re.search('(?<=_)[K,C,L,P]{1}(?<!_)', fname)
+            cfx_files.update({fname : [cfx_version.group(), cfx_band.group()]})
             cfxlist.append(fname)
     if not cfxlist:
         print "No CFX files found for %s" % code
         return
-# TODO: cfx-versions
-#        fvers=[]
-#        for fname in self.cfxlist:
-#            fver = np.int(fname[-5])
-#            if fver == 0: fver=10
-#            fvers.append(fver)
-#        m = max(fvers)
-#        print m
-#            print fname, fver, datetime.fromtimestamp(os.path.getmtime(self.cfx_dir + fname))
-    return cfxlist
+    return sorted(cfx_files.items(), key=lambda x:int(x[1][0]))[::-1]
 
 
-def parse_cfx(cfxfiles):
-    """ CFX files parsing. Return dictionary {CFX-file: parameters} """
-    if not cfxfiles:
-        print "No cfx files"
-        return
-    if isinstance(cfxfiles, str): cfxfiles = list(cfxfiles)
+def parse_cfx(cfxfile):
+    """ CFX files parsing. Return dictionary {Data-file: parameters} """
     cfxdata = dict()
-    for cfxfile in cfxfiles:
-        code = ra_code(cfxfile)
-        f = open(cfx_dir + cfxfile)
-        txt = f.read()
-        f.close()
-        reg = "\[\$end\](?i)"
-        blocks = re.split(reg, txt)  # blocks in file
-        for ind, block in enumerate(blocks):
-            if '[$TLSC]' in block:
+#    code = ra_code(cfxfile)
+    f = open(cfxfile)
+    txt = f.read()
+    f.close()
+    reg = "\[\$end\](?i)"
+    blocks = re.split(reg, txt)  # blocks in file
+    for ind, block in enumerate(blocks):
+        if '[$TLSC]' in block:
 # TODO: deal with spaces
-                tname = re.search('(?<=iam_name = )[A-Za-z]+', block)
-                fmt = re.search('(?<=FORMAT.. = )[A-Za-z0-9_\-]+', block)
-                ifs = re.findall('(?<=IF = )([0-9\.]+\, [RL]\, [UL])', block)
-                files = re.findall('(?<=FILE.. = %P:)([\S]*)', block)
-                ifs = ' '.join(ifs)
-                ifs = re.sub('\, ', '-', ifs)
-                val1 = [code, tname.group(0), fmt.group(0), ifs.split()]
-                for f in files:
-                    cfxdata.update({f:val1})
+            tname = re.search('(?<=iam_name = )[A-Za-z]+', block)
+            fmt = re.search('(?<=FORMAT.. = )[A-Za-z0-9_\-]+', block)
+            ifs = re.findall('(?<=IF = )([0-9\.]+\, [RL]\, [UL])', block)
+            files = re.findall('(?<=FILE.. = %P:)([\S]*)', block)
+            ifs = ' '.join(ifs)
+            ifs = re.sub('\, ', '-', ifs)
+            val1 = [code, tname.group(0), fmt.group(0), ifs.split()]
+            for f in files:
+                cfxdata.update({f:val1})
     return cfxdata
 
 
-
+if __name__ == "__main__":
+    cfx_path = '/home/osh/frb_test/cfx'
+    code = 'raes03gb'
+    a = get_cfx(cfx_path, code)
+    print a
+#    cfile = "/home/osh/Dropbox/frb/data/GLVBI_RAKS01GR_C_20131022T005200_ASC_V1.cfx"
+#    c = parse_cfx(cfx_path + '/' + a[1])
+#    print c

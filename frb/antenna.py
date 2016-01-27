@@ -34,28 +34,22 @@ def select_antenna(antenna, n_small=2, n_big=1, d_lim=50., ignored=None):
     if ignored:
         for ant in ignored:
             antenna.remove(ant)
-    antenna = sorted(antenna, key=lambda x: diameters_dict[x])
     try:
         big_list = [ant for ant in antenna if diameters_dict[ant] > d_lim]
-    except KeyError:
+    except:
+        import traceback
         print("Provide diameter value for antenna {}".format(ant))
+        print("  exception:")
+        traceback.print_exc()
+        raise
+    big_list = sorted(big_list, key= lambda x: diameters_dict[x])
     # Check - at least ``n_big`` big antenna in list
     if len(big_list) < n_big:
         raise Exception("No {} telescopes with D > {} m in list".format(n_big, d_lim))
     small_list = [ant for ant in antenna if diameters_dict[ant] < d_lim]
+    small_list = sorted(small_list, key= lambda x: diameters_dict[x])
     # Check - at least ``n_small`` small antenna in list
     if len(small_list) < n_small:
         raise Exception("No {} telescopes with D < {} m in list".format(n_small, d_lim))
 
     return big_list[: n_big], small_list[: n_small]
-
-
-if __name__ == '__main__':
-    antenna = ['RADIO-AS', 'ZELENCHK', 'NOTO', 'USUDA64', 'SVETLOE', 'ARECIBO']
-    selected = select_antenna(antenna)
-    print(selected)
-    selected = select_antenna(antenna, ignored=['RADIO-AS'])
-    print(selected)
-    selected = select_antenna(antenna, n_big=2, n_small=3, ignored=['RADIO-AS'])
-    print(selected)
-

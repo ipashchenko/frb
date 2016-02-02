@@ -1,145 +1,155 @@
-import re
-import string
 import numpy as np
 import astropy.io.fits as pf
+from astropy.time import Time
 
 
-def aips_bintable_fortran_fields_to_dtype_conversion(aips_type):
+def find_card_from_header(header, value=None, keyword=None,
+                          comment_contens=None):
     """
-    Given AIPS fortran format of binary table (BT) fields, returns
-    corresponding numpy dtype format and shape.
+    Find card from header specified be several possible ways.
 
-    :param aips_type:
-        String of AIPS type.
-
-    :examples:
-        4J => array of 4 32bit integers,
-        E(4,32) => two dimensional array with 4 columns and 32 rows.
-    """
-
-    intv = np.vectorize(int)
-    aips_char = None
-
-    format_dict = {'L': 'bool', 'I': '>i2', 'J': '>i4', 'A': 'S',  'E': '>f4',
-                   'D': '>f8'}
-
-    for key in format_dict.keys():
-        if key in aips_type:
-            aips_char = key
-
-    if not aips_char:
-        raise Exception("aips data format reading problem " + str(aips_type))
-
-    try:
-        dtype_char = format_dict[aips_char]
-    except KeyError:
-        raise Exception("no dtype counterpart for aips data format" +
-                        str(aips_char))
-
-    try:
-        repeat = int(re.search(r"^(\d+)" + aips_char,
-                     aips_type).groups()[0])
-        if aips_char is 'A':
-            dtype_char = str(repeat) + dtype_char
-            repeat = 1
-    except AttributeError:
-        repeat = None
-
-    if repeat is None:
-        _shape = tuple(intv(string.split(re.search(r"^" + aips_char +
-                                                   "\((.+)\)$",
-                                                   aips_type).groups()[0],
-                                         sep=',')))
-    else:
-        _shape = repeat
-
-    return dtype_char, _shape
-
-
-def build_dtype_for_bintable_data(header):
-    """
-    Builds numpy dtype from instance of ``astropy.HDU`` class.
+    :param header:
+        Instance of ``astropy.io.fits.Header`` class.
+    :param value:
+        Value of header's card that specifies card.
+    :param keyword:
+        Keyword of header's card that specifies card.
+    :param comment_contens:
+        Comment of header's card that specifies card.
 
     :return:
-        List with dtype specification and list of regular parameter names.
-
+        Instance of ``astropy.io.fits.card.Card`` class.
     """
+    if comment_contens is not None:
+        search = [card for card in header.cards if comment_contens in
+                  card.comment]
+    else:
+        search = header.cards
 
-    # Number of fields in a item
-    tfields = int(header['TFIELDS'])
+    if value is not None and keyword is None:
+        result = [card for card in search if card.value == value]
+    elif value is None and keyword is not None:
+        result = [card for card in search if card.keyword == keyword]
+    elif value is not None and keyword is not None:
+        result = [card for card in search if (card.keyword == keyword and
+                                              card.value == value)]
+    else:
+        result = search
 
-    # Parameters of regular data matrix if in UV_DATA FITS-IDI table
-    try:
-        maxis = int(header['MAXIS'])
-    except KeyError:
-        import traceback
-        print("No UV_DATA extension")
-        print("  exception:")
-        traceback.print_exc()
-        raise
-
-    # build dtype format
-    names = []
-    formats = []
-    shapes = []
-    tuple_shape = []
-    array_names = []
-
-    for i in range(1, tfields + 1):
-        name = header['TTYPE' + str(i)]
-        if name in names:
-            name *= 2
-        names.append(name)
-        _format, _shape = \
-            aips_bintable_fortran_fields_to_dtype_conversion(header['TFORM' +
-                                                                    str(i)])
-
-        # building format & names for regular data matrix
-        if name == 'FLUX' and maxis is not None:
-            for i in range(1, maxis + 1):
-                maxisi = int(header['MAXIS' + str(i)])
-                if maxisi > 1:
-                    tuple_shape.append(int(header['MAXIS' + str(i)]))
-                    array_names.append(header['CTYPE' + str(i)])
-            formats.append('>f4')
-            shapes.append(tuple(tuple_shape))
-            array_names = array_names
-        else:
-            formats.append(_format)
-            shapes.append(_shape)
-
-    print names, formats, shapes, array_names
-
-    dtype_builder = zip(names, formats, shapes)
-    dtype = [(name, _format, shape) for (name, _format, shape) in dtype_builder]
-
-    return dtype, array_names
+    return result
 
 
-def fits_idi_uv_data_info(fname):
-    hdulist = pf.open(fname)
+def get_key(header, value, keyword):
+    """
+    Get some keyword value from header.
+
+    :param header:
+        Instance of ``astropy.io.fits.Header`` class.
+    :param value:
+        Value of header's card that specifies parameter.
+    :param keyword:
+        Key to value to return.
+
+    :return:
+        Value for specified key.
+    """
+    freq_card = find_card_from_header(header, value=value)[0]
+    return header[keyword + '{}'.format(freq_card[0][-1])]
+
+
+def get_dyn_spectr(fits_idi, band=None, channel=None, time=None,
+                   complex_indx=None, stokes_indx=None):
+    """
+    Function that reads specified part of `regular` data matrix and returns
+    it with time and frequency information.
+
+    :param fits_idi:
+        Path to FITS file.
+    :param band: (optional)
+        Slice that defines band numbers. If ``None`` then concatenate all.
+        (default: ``None``)
+    :param channel: (optional)
+        Slice that defines channel numbers. If ``None`` then output all.
+        (default: ``None``)
+    :param time: (optional)
+        Slice that defines times. If ``None`` then use sensible default.
+        (default: ``None``)
+    :param complex_indx: (optional)
+        Index of COMPLEX regular data matrix to output. If ``None`` then output
+        all. (default: ``None``)
+    :param stokes_indx: (optional)
+        Index of STOKES regular data matrix to output. If ``None`` then output
+        all. (default: ``None``)
+
+    :return:
+        nu, t & Numpy 2D array of (#nu, #t), where #nu - number of frequency
+        channels and #t - number of time intervals. ``nu`` - frequencies [Hz]
+        and ``t`` - times.
+    """
+    hdulist = pf.open(fits_idi)
 
     try:
         indx = hdulist.index_of('UV_DATA')
         hdu = hdulist[indx]
     except KeyError:
         import traceback
-        print("No UV_DATA extension in {}".format(fname))
+        print("No UV_DATA extension in {}".format(fits_idi))
         print("  exception:")
         traceback.print_exc()
         raise
-    dtype, regular_names = build_dtype_for_bintable_data(hdu.header)
-    dtype_names = [d[0] for d in dtype]
     try:
-        idx = dtype_names.index('FLUX')
-    except ValueError:
+        indx = hdulist.index_of('FREQUENCY')
+        fhdu = hdulist[indx]
+    except KeyError:
         import traceback
-        print("No FLUX field in regular data")
+        print("No FREQUENCY extension in {}".format(fits_idi))
         print("  exception:")
         traceback.print_exc()
         raise
-    flux_dtype = dtype[idx]
-    print("{} measurements".format(hdu.header['NAXIS2']))
-    for name, shape in zip(regular_names, flux_dtype[-1]):
-        print("{} dimensions for regular parameter {}".format(shape, name))
 
+    n_band = hdu.header['NO_BAND']
+    n_chan = hdu.header['NO_CHAN']
+    n_stok = hdu.header['NO_STKD']
+    ref_freq = hdu.header['REF_FREQ']
+    n_cmplx = get_key(hdu.header, 'COMPLEX', 'MAXIS')
+
+    if complex_indx is None:
+        complex_indx = slice(0, n_cmplx)
+    if stokes_indx is None:
+        stokes_indx = slice(0, n_stok)
+    if channel is None:
+        channel = slice(0, n_chan)
+    if band is None:
+        band = slice(0, n_band)
+
+    times = Time(hdu.data['DATE'][time] +
+                 hdu.data['TIME'][time], format='jd')
+
+    crpix = get_key(hdu.header, 'FREQ', 'CRPIX')
+
+    channels = np.arange(n_chan) + 1
+    # FIXME: let FREQID be ``1`` everywhere
+    # fhdu_id = fhdu.data[np.where(fhdu.data['FREQID'] == freq_id)]
+    # (#band, #channels) array of frequencies
+    frequencies = (ref_freq + fhdu.data['BANDFREQ'][..., band] +
+                   (channels[channel] - crpix)[:, np.newaxis] *
+                   fhdu.data['CH_WIDTH'][..., band]).T
+
+    data = hdu.data['FLUX'][time, ...]
+    data = np.reshape(data, (data.shape[0], n_band, n_chan, n_stok, n_cmplx))
+
+    if len(range(n_band)[band]) > 1:
+        result = list()
+        for i in range(n_band)[band]:
+            result.append(data[:, i, channel, stokes_indx, complex_indx])
+        result = np.concatenate(result, axis=1)
+    else:
+        result = data[:, band, channel, stokes_indx, complex_indx]
+
+    return times, frequencies, result
+
+
+if __name__ == '__main__':
+    idi_fits = '/mnt/frb_data/raw_data/re03jy/RE03JY_EF_C_AUTO.idifits'
+    t, nu, dsp = get_dyn_spectr(idi_fits, time=slice(0, 10000), complex_indx=0,
+                                stokes_indx=0)

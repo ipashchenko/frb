@@ -7,20 +7,20 @@ vround = np.vectorize(round)
 k = 1. / (2.410331 * 10 ** (-4))
 
 
-def de_disperse(dyn_spectr, nu_0, d_nu, d_t, dm_values):
+def de_disperse(dyn_spectr, dm_values, nu_0, d_nu, d_t, *args, **kwargs):
     """
     De-disperse dynamical spectra with grid of user specifies values of DM.
 
     :param dyn_spectr:
         2D numpy array of dynamical spectra (#freq, #t).
+    :param dm_values:
+        Array-like of DM values to de-disperse [cm^3 /pc].
     :param nu_0:
         Frequency of highest frequency channel [MHz].
     :param d_nu:
         Width of spectral channel [MHz].
     :param d_t:
         Time step [s].
-    :param dm_values:
-        Array-like of DM values to de-disperse [cm^3 /pc].
 
     :return:
         2D numpy array (a.k.a. TDM-array) (#DM, #t)

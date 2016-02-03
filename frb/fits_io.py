@@ -146,10 +146,13 @@ def get_dyn_spectr(fits_idi, band=None, channel=None, time=None,
     else:
         result = data[:, band, channel, stokes_indx, complex_indx]
 
-    return times, frequencies, result
+    return times, frequencies, result.T
 
 
 if __name__ == '__main__':
     idi_fits = '/mnt/frb_data/raw_data/re03jy/RE03JY_EF_C_AUTO.idifits'
-    t, nu, dsp = get_dyn_spectr(idi_fits, time=slice(0, 10000), complex_indx=0,
+    t, nu, dsp = get_dyn_spectr(idi_fits, time=slice(0, 100000), complex_indx=0,
                                 stokes_indx=0)
+    dsp += get_dyn_spectr(idi_fits, time=slice(0, 100000), complex_indx=0,
+                          stokes_indx=1)[2]
+    dsp *= 0.5

@@ -7,7 +7,7 @@ vround = np.vectorize(round)
 k = 1. / (2.410331 * 10 ** (-4))
 
 
-def de_disperse(dyn_spectr, dm_values, nu_0, d_nu, d_t, *args, **kwargs):
+def de_disperse(dyn_spectr, dm_values, *args, **kwargs):
     """
     De-disperse dynamical spectra with grid of user specifies values of DM.
 
@@ -15,12 +15,9 @@ def de_disperse(dyn_spectr, dm_values, nu_0, d_nu, d_t, *args, **kwargs):
         2D numpy array of dynamical spectra (#freq, #t).
     :param dm_values:
         Array-like of DM values to de-disperse [cm^3 /pc].
-    :param nu_0:
-        Frequency of highest frequency channel [MHz].
-    :param d_nu:
-        Width of spectral channel [MHz].
-    :param d_t:
-        Time step [s].
+    :param kwargs:
+        Keyword arguments that should contain ``nu_max``, ``d_nu`` & ``d_t``
+        parameters. See code for explanation.
 
     :return:
         2D numpy array (a.k.a. TDM-array) (#DM, #t)
@@ -29,17 +26,24 @@ def de_disperse(dyn_spectr, dm_values, nu_0, d_nu, d_t, *args, **kwargs):
         Probably, it won't work (at least efficiently) when time shift between
         close frequency channels > one time interval.
     """
+    # Frequency of highest frequency channel [MHz].
+    nu_max = kwargs['nu_max']
+    # Width of spectral channel [MHz].
+    d_nu = kwargs['d_nu']
+    # Time step [s].
+    d_t = kwargs['d_t']
     dm_values = np.array(dm_values)
     n_nu, n_t = dyn_spectr.shape
     nu = np.arange(n_nu, dtype=float)
-    nu = (nu_0 - nu * d_nu)[::-1]
+    # FIXME: I calculate it when reading FITS
+    nu = (nu_max - nu * d_nu)[::-1]
     # Pre-calculating cumulative sums and their difference
     cumsums = np.cumsum(dyn_spectr[::-1, :], axis=0)
     dcumsums = np.roll(cumsums, 1, axis=1) - cumsums
 
     # Calculate shift of time caused by de-dispersion for all channels and all
     # values of DM
-    dt_all = k * dm_values[:, np.newaxis] * (1. / nu ** 2. - 1. / nu_0 ** 2.)
+    dt_all = k * dm_values[:, np.newaxis] * (1. / nu ** 2. - 1. / nu_max ** 2.)
     # Find what number of time bins corresponds to this shifts
     nt_all = vint(vround(dt_all / d_t))[:, ::-1]
 

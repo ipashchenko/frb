@@ -305,3 +305,10 @@ class BatchedTDMIO(object):
         xy = np.vstack(xy)
 
         return xy
+
+
+def search_candidates(tdm, t, dm_values, threshold, d_dm, d_t, batch_size,
+                      *args, **kwargs):
+    btdmi = BatchedTDMIO(tdm, t, dm_values, threshold, d_dm=d_dm, dt=d_t)
+    xy = btdmi.run(batch_size=batch_size)
+    return xy

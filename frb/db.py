@@ -14,35 +14,45 @@ class Candidates(Base):
     antenna = Column(String(8), nullable=False)
     experiment = Column(String(8), nullable=False)
 
-# Create an engine that stores data in the local directory's
-# sqlalchemy_example.db file.
-engine = create_engine('sqlite:///sqlalchemy_example.db')
+# # Create an engine that stores data in the local directory's
+# # sqlalchemy_example.db file.
+# engine = create_engine('sqlite:///sqlalchemy_example.db')
+#
+# # Create all tables in the engine. This is equivalent to "Create Table"
+# # statements in raw SQL.
+# Base.metadata.create_all(engine)
+#
+#
+# from sqlalchemy import create_engine
+# from sqlalchemy.orm import sessionmaker
+#
+# engine = create_engine('sqlite:///sqlalchemy_example.db')
+# # Bind the engine to the metadata of the Base class so that the
+# # declaratives can be accessed through a DBSession instance
+# Base.metadata.bind = engine
+#
+# DBSession = sessionmaker(bind=engine)
+# # A DBSession() instance establishes all conversations with the database
+# # and represents a "staging zone" for all the objects loaded into the
+# # database session object. Any change made against the objects in the
+# # session won't be persisted into the database until you call
+# # session.commit(). If you're not happy about the changes, you can
+# # revert all of them back to the last commit by calling
+# # session.rollback()
+# session = DBSession()
 
-# Create all tables in the engine. This is equivalent to "Create Table"
-# statements in raw SQL.
-Base.metadata.create_all(engine)
+# # Insert a Person in the person table
+# new_candidate = Candidates(time=None, dm=100., antenna='EFF',
+#                            experiment='re03jy')
+# session.add(new_candidate)
+# session.commit()
 
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+def save_to_candidates_db(*args, **kwargs):
+    pass
 
-engine = create_engine('sqlite:///sqlalchemy_example.db')
-# Bind the engine to the metadata of the Base class so that the
-# declaratives can be accessed through a DBSession instance
-Base.metadata.bind = engine
 
-DBSession = sessionmaker(bind=engine)
-# A DBSession() instance establishes all conversations with the database
-# and represents a "staging zone" for all the objects loaded into the
-# database session object. Any change made against the objects in the
-# session won't be persisted into the database until you call
-# session.commit(). If you're not happy about the changes, you can
-# revert all of them back to the last commit by calling
-# session.rollback()
-session = DBSession()
+def save_to_processed_db(*args, **kwargs):
+    pass
 
-# Insert a Person in the person table
-new_candidate = Candidates(time=None, dm=100., antenna='EFF',
-                           experimet='re03jy')
-session.add(new_candidate)
-session.commit()
+

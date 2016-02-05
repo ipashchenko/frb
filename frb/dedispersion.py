@@ -141,6 +141,12 @@ def de_disperse_freq_average(params):
     return values / n_nu
 
 
+def multi_wrapper(func):
+    def wrap(args):
+        return func(*args)
+    return wrap
+
+
 def noncoherent_dedisperse(dsp, dm_grid, nu, nu_max, d_t, savefig=None, threads=1):
     """
     Method that de-disperse ``Frame`` instance with range values of

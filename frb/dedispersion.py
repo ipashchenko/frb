@@ -164,7 +164,6 @@ def noncoherent_dedisperse(dsp, dm_grid, nu, nu_max, d_t, savefig=None, threads=
         m = map
 
     dsp_shared = to_shared_array(dsp)
-    dsp_shared += dsp
 
     params = [(dm, dsp_shared, nu, nu_max, d_t) for dm in dm_grid]
 
@@ -181,11 +180,19 @@ def noncoherent_dedisperse(dsp, dm_grid, nu, nu_max, d_t, savefig=None, threads=
 
 
 def to_shared_array(array):
-        # Using shared array (http://stackoverflow.com/questions/5549190 by pv.)
-        i, j = array.shape
-        shared_array_base = multiprocessing.Array(ctypes.c_float, i * j)
-        return np.ctypeslib.as_array(shared_array_base.get_obj()).reshape((i,
-                                                                           j))
+    """
+    Function that creates shared array with data - copy of data in user supplied
+    array.
+    :param array:
+    :return:
+        Shared array.
+    """
+    # Using shared array (http://stackoverflow.com/questions/5549190 by pv.)
+    i, j = array.shape
+    shared_array_base = multiprocessing.Array(ctypes.c_float, i * j)
+    shared_array =  np.ctypeslib.as_array(shared_array_base.get_obj()).reshape((i, j))
+    shared_array += dsp.copy()
+    return shared_array
 
 if __name__ == '__main__':
     from fits_io import get_dyn_spectr
@@ -205,7 +212,18 @@ if __name__ == '__main__':
     frame = Frame(128, len(t), nu_max, 0., 32./128, d_t)
     frame.add_values(dsp)
     for i in range(10):
-        frame.add_pulse(50. * (i + 1), 5. / 2. ** i, 0.003, dm=500.)
+        frame.add_pulse(50. * (i + 1), 5. / 2. ** i, 0.001, dm=500.)
     dm_grid = np.arange(0., 1000., 50.)
+    print("Dedispersing...")
     tdm = noncoherent_dedisperse(frame.values, dm_grid, nu, nu_max, d_t,
                                  threads=4)
+    print("Searching candidates...")
+    search_kwargs = {'threshold': 99.85, 'n_d_x': 3., 'n_d_y': 15.}
+    from search import search_candidates
+    candidates = search_candidates(tdm, **search_kwargs)
+    for candidate in candidates:
+        print (t[candidate['max_pos'][1]] - t[0]).sec,\
+            dm_grid[candidate['max_pos'][0]]
+        print "Max: ", tdm[candidate['max_pos'][0], candidate['max_pos'][1]]
+        print "dx: ", candidate['dx']
+        print "dy: ", candidate['dy']

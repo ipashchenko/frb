@@ -26,7 +26,7 @@ class Frame(object):
         Number of time steps.
     :param nu_0:
         Frequency of highest frequency channel [MHz].
-    :param t0:
+    :param t_0:
         Time of first measurement.
     :param dnu:
         Width of spectral channel [MHz].
@@ -212,6 +212,31 @@ class Frame(object):
                                      t0_all[:, np.newaxis]) ** 2 / width ** 2.)
         self.values += pulse
 
+    def rm_pulse(self, t_0, amp, width, dm=0.):
+        """
+        Remove pulse to frame.
+
+        :param t_0:
+            Arrival time of pulse at highest frequency channel [s].
+        :param amp:
+            Amplitude of pulse.
+        :param width:
+            Width of gaussian pulse [s] (in time domain).
+        :param dm: (optional)
+            Dispersion measure of pulse [cm^3 / pc]. (Default: ``0.``)
+
+        """
+        # MHz ** 2 * cm ** 3 * s / pc
+        k = 1. / (2.410331 * 10 ** (-4))
+
+        # Calculate arrival times for all channels
+        t0_all = (t_0 * np.ones(self.n_nu)[:, np.newaxis] +
+                  k * dm * (1. / self.nu ** 2. -
+                            1. / self.nu_0 ** 2.))[0]
+        pulse = amp * np.exp(-0.5 * (self.t -
+                                     t0_all[:, np.newaxis]) ** 2 / width ** 2.)
+        self.values -= pulse
+
     def save_to_txt(self, fname):
         np.savetxt(fname, self.values.T)
 
@@ -367,19 +392,19 @@ class DataFrame(Frame):
 if __name__ == '__main__':
     import time
     print "Creating frame"
-    frame = Frame(512, 600000, 1684., 0., 16./512, 1./1000)
+    frame = Frame(256, 1200000, 1684., 0., 16./256, 1./1000)
     print "Adding pulse"
-    frame.add_pulse(100., 0.09, 0.003, 100.)
-    frame.add_pulse(200., 0.09, 0.003, 200.)
-    frame.add_pulse(300., 0.09, 0.003, 300.)
-    frame.add_pulse(400., 0.09, 0.003, 500.)
-    frame.add_pulse(500., 0.09, 0.003, 700.)
+    frame.add_pulse(100., 0.15, 0.003, 100.)
+    frame.add_pulse(200., 0.15, 0.003, 200.)
+    frame.add_pulse(300., 0.15, 0.003, 300.)
+    frame.add_pulse(400., 0.15, 0.003, 500.)
+    frame.add_pulse(500., 0.15, 0.003, 700.)
     print "Adding noise"
     frame.add_noise(0.5)
-    dm_values = frame.create_dm_grid(0., 1000., 50)
+    dm_values = frame.create_dm_grid(0., 1500., 50)
     from dedispersion import de_disperse
     t0 = time.time()
-    result = de_disperse(frame.values, 1684., 16./512, 1./1000, dm_values)
+    result = de_disperse(frame.values, 1684., 16./256, 1./1000, dm_values)
     t1 = time.time()
     print "Dedispersion took", t1 - t0
     a = frame.values

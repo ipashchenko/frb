@@ -151,8 +151,23 @@ def get_dyn_spectr(fits_idi, band=None, channel=None, time=None,
 
 if __name__ == '__main__':
     idi_fits = '/mnt/frb_data/raw_data/re03jy/RE03JY_EF_C_AUTO.idifits'
-    t, nu, dsp = get_dyn_spectr(idi_fits, time=slice(0, 100000), complex_indx=0,
-                                stokes_indx=0)
+    t, nu_array, dsp = get_dyn_spectr(idi_fits, time=slice(0, 100000),
+                                      complex_indx=0, stokes_indx=0)
     dsp += get_dyn_spectr(idi_fits, time=slice(0, 100000), complex_indx=0,
                           stokes_indx=1)[2]
     dsp *= 0.5
+    nu_max = np.max(nu_array.ravel()) / 10 ** 6
+    d_nu = (nu_array[0][1:] - nu_array[0][:-1])[0] / 10 ** 6
+    d_t = (t[1] - t[0]).sec
+    ddsp_kwargs = dict()
+    ddsp_kwargs.update({'nu_max': nu_max, 'd_nu': d_nu, 'd_t': d_t})
+
+    from frames import Frame
+    frame = Frame(128, len(t), nu_max, 0., 32./128, d_t)
+    # frame.add_values(dsp)
+    frame.add_pulse(50., 1., 0.003, dm=500.)
+    frame.add_noise(1.)
+
+    from dedispersion import de_disperse
+    print("Desipersing")
+    tdm = de_disperse(frame.values, np.arange(0., 1000., 25.), **ddsp_kwargs)

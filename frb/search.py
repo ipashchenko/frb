@@ -7,11 +7,33 @@ from skimage.measure import regionprops
 # de-dispersed auto-spectra.
 
 
-def find_peaks(array, nstd=4, med_width=30, gauss_width=2):
+def find_peaks(array_like, n_std=4, med_width=30, gauss_width=2):
+    """
+    Find peaks in 1D array.
+
+    Data first median filtered with window size ``med_width``. Then it convolved
+    with gaussian filter of width ``gauss_width``. Indexes of data with values
+    higher then ``n_std`` are returned.
+
+    :param array_like:
+        Iterable of data values.
+    :param med_width: (optional)
+        Width of median filter to preprocess data. (default: ``30``)
+    :param gauss_width: (optional)
+        Width of gaussian filter to convolve median filtered data. (default:
+        ``2``)
+    :param n_std: (optional)
+        Number of standard deviations to consider when searching peaks.
+        (default: 4)
+
+    :return:
+        Numpy array of indexes of peak values.
+    """
     import scipy
+    array = np.asarray(array_like)
     array = scipy.signal.medfilt(array, med_width)
     garray = scipy.ndimage.filters.gaussian_filter1d(array, gauss_width)
-    ind = garray[garray > nstd * np.std(garray)]
+    ind = garray[garray > n_std * np.std(garray)]
     return ind
 
 

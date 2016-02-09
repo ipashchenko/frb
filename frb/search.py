@@ -2,9 +2,81 @@ import numpy as np
 from scipy.ndimage.measurements import maximum_position, label, find_objects
 from scipy.ndimage.morphology import generate_binary_structure
 from skimage.measure import regionprops
+from rpy2.robjects.packages import importr
+from rpy2.robjects import FloatVector
 
-# TODO: add algorithm in 1D - just searching peaks in freq. averaged
-# de-dispersed auto-spectra.
+
+def find_levels_bcp(ts, prob=0.95, p0=0.0001, burnin=500, mcmc=1000, w0=0.2):
+    kwargs = {'p0': p0, 'burnin': burnin, 'mcmc': mcmc, 'w0': w0}
+    ts = FloatVector(ts)
+    # Load library ``bcp``
+    bcp = importr("bcp")
+    out = bcp.bcp(ts, **kwargs)
+    posterior_probs = out.rx2("posterior.prob")
+    return np.where(posterior_probs > prob)[0]
+
+
+def find_levels_regtree(ts):
+    """
+    Attempt to find regions of high / low signal using decision tree regression.
+
+    If RFI is time-limited then dynamical spectra will show `stripes` of
+    enhanced noise. This function will find such stripes.
+
+    :param ts:
+        Iterable of signal values.
+    :return:
+    """
+    import scipy
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.grid_search import GridSearchCV
+    import matplotlib.pyplot as plt
+    x = np.arange(len(ts)).reshape((len(ts), 1))
+
+    def get_score(depth, rnd=42):
+        max_depth = depth
+        x = np.arange(len(ts)).reshape((len(ts), 1))
+        # ts = scipy.signal.medfilt(ts, 101)
+        # param_grid = {'learning_rate': [0.3, 0.1, 0.05, 0.01],
+        #               'max_depth': [3, 4, 6],
+        #               'min_samples_leaf': [2, 3, 9, 17],
+        #               'max_features': [1.0, 0.3, 0.1]}
+        # est = GradientBoostingClassifier(n_estimators=3000)
+        # gs_cv = GridSearchCV(est, param_grid, n_jobs=4).fit(X_scaled, y)
+        # gs_cv.best_params_
+        # est = GradientBoostingClassifier(n_estimators=3000, **gs_cv.best_params_)
+        # est.fit(X_scaled, y)
+        # param_grid = {'max_depth': [2 * i for i in range(1, 100, 10)],
+        #               'min_samples_split': [2, 20, 100, 1000]}
+        # param_grid = {'min_samples_split': [2, 20, 100, 1000],
+        #               'min_samples_leaf': [5, 50, 100, 1000]}
+        regr = DecisionTreeRegressor(max_depth=max_depth, min_samples_split=1000,
+                                     min_samples_leaf=1000, random_state=rnd,
+                                     max_leaf_nodes=max_depth)
+        # from sklearn.cross_validation import KFold
+        # kf = KFold(len(ts), n_folds=10, shuffle=True)
+        # gs_cv = GridSearchCV(regr, param_grid, n_jobs=4, cv=kf).fit(x, ts)
+        # gs_cv.best_params_
+        # regr = DecisionTreeRegressor(max_depth=max_depth, **gs_cv.best_params_)
+        regr.fit(x, ts)
+        return regr.score(x, ts)
+
+    def plot_tree(max_depth, rnd=42):
+        regr = DecisionTreeRegressor(max_depth=max_depth, min_samples_split=1000,
+                                     min_samples_leaf=1000, random_state=rnd,
+                                     max_leaf_nodes=max_depth)
+        regr.fit(x, ts)
+        x_test = np.arange(len(ts)).reshape((len(ts), 1))
+        y_test = regr.predict(x_test)
+        plt.plot(ts, '.k')
+        plt.plot(x_test, y_test)
+    # x1 = regr.tree_.threshold[0]
+    # y_before, y_after = np.squeeze(regr.tree_.value)[1:]
+
+    scores = np.array([get_score(depth) for depth in range(2, 100)])
+    # TODO: Find break that corresponds to big differences.
+    plt.plot(range(2, 100), scores)
+
 
 
 def find_peaks(array_like, n_std=4, med_width=30, gauss_width=2):

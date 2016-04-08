@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import combinations
-
+import os
+import fnmatch
 
 vround = np.vectorize(round)
 vint = np.vectorize(int)
@@ -154,3 +155,18 @@ def unique_rows(a):
     ui = np.ones(len(a), 'bool')
     ui[1:] = (diff != 0).any(axis=1)
     return a[ui]
+
+
+def find_file(fname, path = '/'):
+    """
+    Find a file (fname) in (path). Wildcards are supported
+    (ak)
+    """
+    matches = []
+    for root, dirnames, filenames in os.walk(path):
+        for filename in fnmatch.filter(filenames, fname):
+            matches.append(os.path.join(root, filename))
+    if len(matches)==0:
+#        print("find_file: Can't find file ({})".format(fname))
+        return None
+    return matches

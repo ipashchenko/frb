@@ -76,6 +76,8 @@ class CFX(object):
         for ind, block in enumerate(blocks):
             if '[$TLSC]' in block:
     # TODO: deal with spaces (???)
+#           add full telescope name
+#           WTF with "code : here ???
                 tname = re.search('(?<=iam_name = )[A-Za-z]+', block)
                 fmt = re.search('(?<=FORMAT.. = )[A-Za-z0-9_\-]+', block)
                 ifs = re.findall('(?<=IF = )([0-9\.]+\, [RL]\, [UL])', block)
@@ -95,9 +97,6 @@ class CFX(object):
 #            print("NOTE: You can delete following files from data path:\n")
 #            print cfx_data.keys()
 #            return
-1
-
-
 
 if __name__ == "__main__":
     cfx_path = '/home/osh/frb_test/cfx'

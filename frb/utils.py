@@ -158,9 +158,15 @@ def unique_rows(a):
 
 
 def find_file(fname, path = '/'):
-    """ Find a file (fname) in (path)"""
+    """
+    Find a file (fname) in (path). Wildcards are supported
+    (ak)
+    """
     matches = []
     for root, dirnames, filenames in os.walk(path):
         for filename in fnmatch.filter(filenames, fname):
             matches.append(os.path.join(root, filename))
+    if len(matches)==0:
+#        print("find_file: Can't find file ({})".format(fname))
+        return None
     return matches

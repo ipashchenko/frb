@@ -14,10 +14,9 @@ import raw_data
 cfx_path = '/home/osh/frb_test/cfx'
 data_path = '/home/osh/frb_test/raw_data'
 
-dspec_len = 1
-dspec_params = {'nchan':64, 'dt':1, 'offst':0, 'dur':10.1, 'outfile':None}
-
+dspec_params = {'nchan':64, 'dt':1, 'offst':0, 'dur':10, 'outfile':None}
 split_duration = 0.5 # split an M5-file into [sec] intervals
+
 
 ### INPUT CODE
 code = 'raks02ay'
@@ -39,7 +38,6 @@ for cfile in cfx_files:
         continue
     for fname, params in cfx_data.items():
             m5file = find_file(fname, data_path)
-
             if m5file is None:
 #                print("main: Can't find file: {}".format(fname))
                 continue
@@ -51,42 +49,22 @@ for cfile in cfx_files:
             cfx_fmt = params[-1]   # Rec configuration
             m5 = raw_data.M5(m5file, m5file_fmt)
             offst = 0
+            dspec_params.update({'dur':split_duration})
             while offst*32e6 < m5.size:
                 dspec_params.update({'offst':offst})
-                print dspec_params
+#                print dspec_params
 
                 ds = m5.create_dspec(**dspec_params)
-                print ds
-                dsarr = raw_data.dspec_cat(ds['Output'], cfx_fmt)
+                # NOTE: all 4 channels are stacked forming dsarr:
+                dsarr = raw_data.dspec_cat(os.path.basename(ds['Dspec_file']),
+                                           cfx_fmt)
+                metadata = ds
+                metadata['Raw_data_file'] = fname
+                metadata['Exp_data'] = params
+#                plt.figure()
+#                plt.imshow(dsarr, aspect='auto')
                 print "BRV SEARCHING..."  # search brv in array here
+
 # TODO: save search results, delete data, ...
                 offst = offst + split_duration
-
-
-
-### M5file (kostyl)
-
-#m5file = '../data/Pa_rk02ay_test.m5b'
-#print("Processing data file: {}".format(m5file))
-
-### Create dyn spec (DS) file(s) + metadata
-#m5 = raw_data.M5(m5file)
-#m5.show_m5info()
-#inf = m5.create_dspec(**dspec_params)
-#inf
-
-### concatenate dynamical spectra -- OK!
-#fname = os.path.basename(m5file)
-#fname = cfx_data.keys()[0]
-#cfx_fmt = cfx_data.values()[0][-1]
-# For Parkes:
-#cfx_fmt = ['1668.00-R-L', '1668.00-R-U', '1668.00-L-L', '1668.00-L-U']
-#a = raw_data.dspec_cat(fname, cfx_fmt)
-#plt.imshow(a, aspect='auto')
-#plt.colorbar()
-#start_time = m5.get_start_time()
-
-# TODO: process data file )))
-
-
 

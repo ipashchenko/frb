@@ -86,7 +86,7 @@ class M5(object):
         opt2 = "-n %s " % nchan
         if dur is not None: opt3 = "-l %s " % dur  # duration (time limit)
         else: opt3 = ""
-        if offst == 0.0: opt4 = "-o %s " % offst # offset (see my5spec)
+        if offst != 0.0: opt4 = "-o %s " % offst # offset (see my5spec)
         else: opt4 = ""
         opts = opt1 + opt2 + opt3 + opt4
         if not outfile:
@@ -101,10 +101,10 @@ class M5(object):
         subprocess.check_call(cmd.split())
         ds_start = self.get_start_time() + offst/86400.0
 
-        res = {'NChan':nchan, 'DT[ms]':dt,
-               'Start[d]':ds_start,
-               'Dur[s]':dur,
-               'Output':outfile}
+        res = {'Nchan':nchan, 'DT_ms':dt,
+               'Start_mjd':ds_start,
+               'Duration_sec':dur,
+               'Dspec_file':outfile}
         return res
 
 ### extra manipulations with dspec files

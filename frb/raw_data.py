@@ -35,7 +35,8 @@ class M5(object):
         self.fmt = fmt
         if self.fmt is None:
             self.fmt = "Mark5B-256-4-2"
-            print "WARNING: fmt is not set. Trying Mark5B-256-4-2"
+            print "WARNING: fmt is not set" #Trying Mark5B-256-4-2
+            raise SystemExit('fmt is not set')
         self.my5spec = my5spec
         self.m5dir = os.path.dirname(os.path.abspath(self.m5file))
         self.size = os.path.getsize(self.m5file)

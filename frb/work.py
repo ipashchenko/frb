@@ -61,6 +61,7 @@ for cfile in cfx_files:
                 metadata = ds
                 metadata['Raw_data_file'] = fname
                 metadata['Exp_data'] = params
+                break
 #                plt.figure()
 #                plt.imshow(dsarr, aspect='auto')
                 print "BRV SEARCHING..."  # search brv in array here

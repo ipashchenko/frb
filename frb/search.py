@@ -4,6 +4,8 @@ from scipy.ndimage.morphology import generate_binary_structure
 from skimage.measure import regionprops
 from rpy2.robjects.packages import importr
 from rpy2.robjects import FloatVector
+from sklearn.tree import DecisionTreeRegressor
+import matplotlib.pyplot as plt
 
 
 def find_levels_bcp(ts, prob=0.95, p0=0.0001, burnin=500, mcmc=1000, w0=0.2):
@@ -30,7 +32,6 @@ def find_levels_regtree(ts):
     import scipy
     from sklearn.tree import DecisionTreeRegressor
     from sklearn.grid_search import GridSearchCV
-    import matplotlib.pyplot as plt
     x = np.arange(len(ts)).reshape((len(ts), 1))
 
     def get_score(depth, rnd=42):
@@ -79,7 +80,7 @@ def find_levels_regtree(ts):
 
 
 
-def find_peaks(array_like, n_std=4, med_width=30, gauss_width=2):
+def find_peaks(array_like, n_std=4, med_width=31, gauss_width=2):
     """
     Find peaks in 1D array.
 
@@ -105,8 +106,46 @@ def find_peaks(array_like, n_std=4, med_width=30, gauss_width=2):
     array = np.asarray(array_like)
     array = scipy.signal.medfilt(array, med_width)
     garray = scipy.ndimage.filters.gaussian_filter1d(array, gauss_width)
-    ind = garray[garray > n_std * np.std(garray)]
+    ind = (garray - np.mean(garray)) > n_std * np.std(garray)
     return ind
+
+
+def find_noisy(dsp, n, axis=0, rnd=42):
+    """
+    Attempt to find noisy parts of dynamical spectra. Fitting gaussian mixture
+    model to histogram of ``dsp`` value. If 2 components is superior model based
+    on BIC then we can find typical threshold for high-amplitude noise.
+    :param dsp:
+    :param n:
+    :param axis:
+    :return:
+    """
+    from sklearn.mixture import GMM
+    results = dict()
+    data = dsp.reshape((dsp.size, 1))
+    for i in range(1, n + 1):
+        classif = GMM(n_components=i)
+        classif.fit(data)
+        results.update({classif.bic(data): [i, classif]})
+    min_bic = min(results.keys())
+    i, clf = results[min_bic]
+    if i == 2:
+        threshold = (clf.means_ + 3. * np.sqrt(clf.covars_))[0][0]
+        ts = np.mean(dsp, axis=0)
+        import scipy
+        tsf = scipy.signal.medfilt(ts, 3)
+        dsp_changes = tsf < threshold
+        n_peaks = len(np.where(dsp_changes[:-1] != dsp_changes[1:])[0])
+        regr = DecisionTreeRegressor(max_depth=n_peaks, min_samples_split=50,
+                                     min_samples_leaf=50, random_state=rnd,
+                                     max_leaf_nodes=n_peaks)
+        x = np.arange(len(ts)).reshape((len(ts), 1))
+
+        regr.fit(x, ts)
+        x_test = np.arange(len(ts)).reshape((len(ts), 1))
+        y_test = regr.predict(x_test)
+        plt.plot(ts, '.k')
+        plt.plot(x_test, y_test)
 
 
 def max_pos(object, image):

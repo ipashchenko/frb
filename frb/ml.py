@@ -23,6 +23,9 @@ class PulseClassifier(object):
     def create_train_sample(self):
         pass
 
+    def create_test_sample(self):
+        pass
+
     def train(self):
         pass
 

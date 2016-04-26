@@ -166,12 +166,9 @@ def max_pos(object, image):
             object.bbox[2] - object.bbox[0], object.bbox[3] - object.bbox[1]
 
 
-def search_candidates(image, threshold, n_d_x, n_d_y):
+def search_candidates(image, n_d_x, n_d_y):
 
-    threshold = np.percentile(image.ravel(), threshold)
     a = image.copy()
-    # Keep only tail of image values distribution with signal
-    a[a < threshold] = 0
     s = generate_binary_structure(2, 2)
     # Label image
     labeled_array, num_features = label(a, structure=s)

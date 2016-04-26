@@ -211,13 +211,24 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.8):
     :param threshold_perc:
     :return:
     """
-    from skimage.filters import median
-    from skimage.morphology import disk
     image = tdm_image.copy()
-    med = median(image, disk(disk_size))
+    med = circular_median(image, disk_size)
     threshold = np.percentile(med.ravel(), threshold_perc)
     med[med < threshold] = 0
     return med
+
+
+def circular_median(data, radius):
+    """
+    :param data:
+    :param radius:
+    :return:
+    """
+    from scipy.ndimage.filters import generic_filter as gf
+    from skimage.morphology import disk
+
+    kernel = disk(radius)
+    return gf(data, np.median, footprint=kernel)
 
 
 def get_props(image, threshold):

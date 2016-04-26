@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from candidates import Candidate
+# from candidates import Candidate
 
 
 # TODO: Put dynamical spectra with it's metada to class (a-la ``frames.Frame``)?

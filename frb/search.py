@@ -166,6 +166,30 @@ def max_pos(object, image):
             object.bbox[2] - object.bbox[0], object.bbox[3] - object.bbox[1]
 
 
+# TODO: All search functions must returns instances of ``Candidate`` class
+def search_candidates_clf(dsp, frb_clf=None, training_frac=0.01):
+    """
+    Search FRB using ML.
+    :param dsp:
+        Dynamical spectra.
+    :param frb_clf: (optional)
+        Instance of ``PulseClassifier``. If ``None`` then initialize one and
+        train usign data supplied. (default: ``None``)
+    :param training_frac: (optional)
+        Fraction of time interval of dynamical spectra used for training
+        classifier. (default: ``0.01``)
+    :return:
+    """
+    from classification import PulseClassifier
+    if frb_clf is None:
+        frb_clf = PulseClassifier()
+        frb_clf.create_train_sample(dsp, frac=training_frac)
+        frb_clf.train()
+    candidates = frb_clf.classify(dsp)
+    return candidates
+
+
+# TODO: All search functions must returns instances of ``Candidate`` class
 def search_candidates(image, n_d_x, n_d_y):
 
     a = image.copy()
@@ -204,7 +228,7 @@ def search_candidates(image, n_d_x, n_d_y):
 # FIXME: ``skimage.filters.median`` use float images with ranges ``[-1, 1]``. I
 # can scale original, use ``median`` and then scale back - it is much faster
 # then mine
-def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.8,
+def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
                     statistic='mean'):
     """
     Function that preprocess de-dispersed plane `t-DM` by creating
@@ -215,7 +239,8 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.8,
     :param threshold_perc:
     :return:
     """
-    statistic_dict = {'mean': circular_mean, 'median': circular_median}
+    statistic_dict = {'mean': circular_mean, 'median': circular_median,
+                      'gauss': gaussian_filter}
     image = tdm_image.copy()
     image = statistic_dict[statistic](image, disk_size)
     threshold = np.percentile(image.ravel(), threshold_perc)
@@ -234,6 +259,11 @@ def circular_mean(data, radius):
 
     kernel = disk(radius)
     return gf(data, np.mean, footprint=kernel)
+
+
+def gaussian_filter(data, sigma):
+    from skimage.filters import gaussian_filter as gf
+    return gf(data, sigma)
 
 
 def circular_median(data, radius):

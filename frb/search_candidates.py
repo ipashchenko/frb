@@ -83,10 +83,6 @@ class Searcher(object):
         else:
             self.preprocess_func = None
 
-    def _preprocess(self):
-        result = self.preprocess_func()
-        return result
-
     def _de_disperse(self):
         result = self.de_disp_func(self.dsp)
         return result
@@ -170,12 +166,20 @@ if __name__ == '__main__':
     print "Creating Dynamical Spectra"
     from frames import Frame
     frame = Frame(256, 10000, 1684., 0., 16./256, 1./1000)
-    print "Adding pulse"
-    frame.add_pulse(1., 0.15, 0.003, 100.)
-    frame.add_pulse(2., 0.15, 0.003, 200.)
-    frame.add_pulse(3., 0.15, 0.003, 300.)
-    frame.add_pulse(4., 0.15, 0.003, 500.)
-    frame.add_pulse(5., 0.15, 0.003, 700.)
+    n_pulses = 5
+    # Step of de-dispersion
+    d_dm = 25.
+    print "Adding {} pulses".format(n_pulses)
+    amps = np.random.uniform(0.1, 0.15, size=n_pulses)
+    widths = np.random.uniform(0.001, 0.005, size=n_pulses)
+    dm_values = np.random.uniform(0, 1000, size=n_pulses)
+    times = np.random.uniform(0., 10., size=n_pulses)
+    for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
+        frame.add_pulse(t_0, amp, width, dm)
+        print "Adding pulse with t0={}, amp={}, width={}, dm={}".format(t_0,
+                                                                        amp,
+                                                                        width,
+                                                                        dm)
     print "Adding noise"
     frame.add_noise(0.5)
 
@@ -183,14 +187,20 @@ if __name__ == '__main__':
                  'exp_code': 'raks00'}
     from dedispersion import de_disperse
     from search import search_candidates, create_ellipses
-    dm_grid = np.arange(0., 1000., 25.)
+    dm_grid = np.arange(0., 1000., d_dm)
     searcher = Searcher(dsp=frame.values, de_disp_func=de_disperse,
                         search_func=search_candidates, meta_data=meta_data,
                         preprocess_func=create_ellipses,
                         de_disp_args=[dm_grid],
                         de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
                                         'd_t': 1./1000},
-                        search_kwargs={'n_d_x': 3., 'n_d_y': 10.},
-                        preprocess_kwargs={'disk_size': 5,
-                                           'threshold_perc': 99.8})
+                        search_kwargs={'n_d_x': 5., 'n_d_y': 15.},
+                        preprocess_kwargs={'disk_size': 3,
+                                           'threshold_perc': 99.75,
+                                           'statistic': 'mean'})
     candidates = searcher.search()
+    print "Found {} pulses".format(len(candidates))
+    for candidate in candidates:
+        max_pos = candidate['max_pos']
+        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
+                                          max_pos[0] * d_dm)

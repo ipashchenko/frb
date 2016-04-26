@@ -204,6 +204,25 @@ def search_candidates(image, threshold, n_d_x, n_d_y):
     return _objects
 
 
+def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.8):
+    """
+    Function that preprocess de-dispersed plane `t-DM` by creating
+    characteristic inclined ellipses in places where FRB is sitting.
+
+    :param tdm_image:
+    :param disk_size:
+    :param threshold_perc:
+    :return:
+    """
+    from skimage.filters import median
+    from skimage.morphology import disk
+    image = tdm_image.copy()
+    med = median(image, disk(disk_size))
+    threshold = np.percentile(med.ravel(), threshold_perc)
+    med[med < threshold] = 0
+    return med
+
+
 def get_props(image, threshold):
     """
     Rerurn measured properties list of imaged labeled at specified threshold.

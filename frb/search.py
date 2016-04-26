@@ -201,7 +201,11 @@ def search_candidates(image, n_d_x, n_d_y):
     return _objects
 
 
-def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.8):
+# FIXME: ``skimage.filters.median`` use float images with ranges ``[-1, 1]``. I
+# can scale original, use ``median`` and then scale back - it is much faster
+# then mine
+def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.8,
+                    statistic='mean'):
     """
     Function that preprocess de-dispersed plane `t-DM` by creating
     characteristic inclined ellipses in places where FRB is sitting.
@@ -211,11 +215,25 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.8):
     :param threshold_perc:
     :return:
     """
+    statistic_dict = {'mean': circular_mean, 'median': circular_median}
     image = tdm_image.copy()
-    med = circular_median(image, disk_size)
-    threshold = np.percentile(med.ravel(), threshold_perc)
-    med[med < threshold] = 0
-    return med
+    image = statistic_dict[statistic](image, disk_size)
+    threshold = np.percentile(image.ravel(), threshold_perc)
+    image[image < threshold] = 0
+    return image
+
+
+def circular_mean(data, radius):
+    """
+    :param data:
+    :param radius:
+    :return:
+    """
+    from scipy.ndimage.filters import generic_filter as gf
+    from skimage.morphology import disk
+
+    kernel = disk(radius)
+    return gf(data, np.mean, footprint=kernel)
 
 
 def circular_median(data, radius):

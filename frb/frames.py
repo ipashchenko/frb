@@ -4,6 +4,9 @@ import numpy as np
 import pickle_method
 from utils import vint, vround, delta_dm_max
 
+from sqlalchemy import Column, String
+from sqlalchemy.ext.declarative import declarative_base
+
 try:
     import george
     from george import kernels
@@ -15,7 +18,10 @@ except ImportError:
     plt = None
 
 
-class Frame(object):
+Base = declarative_base()
+
+
+class Frame(Base):
     """
     Basic class that represents a set of regularly spaced frequency channels
     with regularly measured values (time sequence of autospectra).
@@ -34,7 +40,18 @@ class Frame(object):
         Time step [s].
 
     """
-    def __init__(self, n_nu, n_t, nu_0, t_0, dnu, dt):
+     __tablename__ = "processed_data"
+    
+    id = Column(Integer, primary_key=True)
+    exp_code = Column(String)
+    antenna = Column(String)
+    time = Column(String)
+    freq = Column(String)
+    band = Column(String)
+    pol = Column(String)
+    algo = Column(String)
+    
+    def __init__(self, n_nu, n_t, nu_0, t_0, dnu, dt, meta_data=None):
         self.n_nu = n_nu
         self.n_t = n_t
         self.nu_0 = nu_0
@@ -50,7 +67,15 @@ class Frame(object):
         self.t = t_0 + t * dt
         self.dt = dt
         self.dnu = dnu
-
+        self.meta_data = meta_data
+        self.exp_code = meta_data['exp_code']
+        self.antenna = meta_data['antenna']
+        self.time = meta_data['time']
+        self.freq = meta_data['freq']
+        self.band = meta_data['band']
+        self.pol = meta_data['pol']
+        self.algo = meta_data['algo']
+        
     def add_values(self, array):
         """
         Add dyn. spectra in form of numpy array (#ch, #t,) to instance.

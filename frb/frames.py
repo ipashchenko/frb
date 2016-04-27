@@ -360,34 +360,34 @@ class Frame(object):
         return frames
 
 
-# TODO: should i use just one class ``Frame`` but different io-methods?
-# TODO: Create subclass for FITS input.
-class DataFrame(Frame):
+def create_from_txt(fname, nu_0, t_0, dnu, dt, n_nu_discard=0):
     """
-    Class that represents the frame of real data.
-
+    Function that creates instance of ``Frame`` class from text file.
+    
     :param fname:
         Name of txt-file with rows representing frequency channels and columns -
         1d-time series of data for each frequency channel.
-
+    
+    :return:
+        Instance of ``Frame`` class.
     """
-    def __init__(self, fname, nu_0, t_0, dnu, dt, n_nu_discard=0):
-        # Assert even number of channels to discard
-        assert not int(n_nu_discard) % 2
+    assert not int(n_nu_discard) % 2
 
-        try:
-            values = np.load(fname).T
-        except IOError:
-            values = np.loadtxt(fname, unpack=True)
-        n_nu, n_t = np.shape(values)
-        super(DataFrame, self).__init__(n_nu - n_nu_discard, n_t,
-                                        nu_0 - n_nu_discard * dnu / 2., t_0,
-                                        dnu, dt)
-        if n_nu_discard:
-            self.values += values[n_nu_discard / 2 : -n_nu_discard / 2, :]
-        else:
-            self.values += values
-
+    try:
+        values = np.load(fname).T
+    except IOError:
+        values = np.loadtxt(fname, unpack=True)
+    n_nu, n_t = np.shape(values)
+    frame = Frame(n_nu - n_nu_discard, n_t,
+                  nu_0 - n_nu_discard * dnu / 2., t_0,
+                  dnu, dt)
+    if n_nu_discard:
+        frame.values += values[n_nu_discard / 2 : -n_nu_discard / 2, :]
+    else:
+        frame.values += values
+        
+    return frame
+        
 
 if __name__ == '__main__':
     import time
@@ -401,17 +401,3 @@ if __name__ == '__main__':
     frame.add_pulse(500., 0.15, 0.003, 700.)
     print "Adding noise"
     frame.add_noise(0.5)
-    dm_values = frame.create_dm_grid(0., 1500., 50)
-    from dedispersion import de_disperse
-    t0 = time.time()
-    result = de_disperse(frame.values, 1684., 16./256, 1./1000, dm_values)
-    t1 = time.time()
-    print "Dedispersion took", t1 - t0
-    a = frame.values
-    from objects import BatchedTDMIO
-    btdmi = BatchedTDMIO(result, frame.t, dm_values, 99.85, d_dm=350, dt=0.003)
-    t0 = time.time()
-    xy = btdmi.run(batch_size=100000)
-    t1 = time.time()
-    print xy
-    print "Search of pulses took", t1 - t0

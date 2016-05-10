@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # from candidates import Candidate
+import hashlib
 
 
 # TODO: Put dynamical spectra with it's metada to class (a-la ``frames.Frame``)?
@@ -70,36 +71,126 @@ class Searcher(object):
         self._preprocess_func = preprocess_func
         self.preprocess_args = preprocess_args
         self.preprocess_kwargs = preprocess_kwargs
-        self.de_disp_func = _function_wrapper(self._de_disp_func,
-                                              self.de_disp_args,
-                                              self.de_disp_kwargs)
-        self.search_func = _function_wrapper(self._search_func,
-                                             self.search_args,
-                                             self.search_kwargs)
-        if preprocess_func is not None:
-            self.preprocess_func = _function_wrapper(self._preprocess_func,
-                                                     self.preprocess_args,
-                                                     self.preprocess_kwargs)
+
+        self._de_dispersed_cache = dict()
+        self._preprocessed_cache = dict()
+
+        self._de_dispersed_data = None
+        # This contain md5-sum for current de-dispersion parameters.
+        self._de_disp_m = None
+        self._pre_processed_data = None
+
+    def de_disperse(self, de_disp_func, *args, **kwargs):
+        args = args or self.de_disp_args
+        kwargs = kwargs or self.de_disp_kwargs
+        m = hashlib.md5()
+        margs = [x.__repr__() for x in args]
+        mkwargs = [x.__repr__() for x in kwargs.values()]
+        map(m.update, margs + mkwargs)
+        if de_disp_func is None:
+            m.update(self._de_disp_func.__name__)
+            key = m.hexdigest()
+            result = self._de_dispersed_cache.get(key, None)
+            if result is not None:
+                print "Found cached de-dispersed data..."
+            else:
+                result = self._de_disp_func(self.dsp, *args, **kwargs)
+                # Put to cache
+                self._de_dispersed_cache[key] = result
         else:
-            self.preprocess_func = None
+            m.update(de_disp_func.__name__)
+            key = m.hexdigest()
+            result = self._de_dispersed_cache.get(key, None)
+            if result is not None:
+                print "Found cached de-dispersed data..."
+            else:
+                result = de_disp_func(self.dsp, *args, **kwargs)
+                # Put to cache
+                self._de_dispersed_cache[key] = result
+        self._de_dispersed_data = result
+        self._de_disp_m = m.copy()
 
-    def _de_disperse(self):
-        result = self.de_disp_func(self.dsp)
-        return result
+    def reset_pre_processing(self):
+        self._pre_processed_data = None
 
-    def search(self):
+    def reset_dedispersion(self):
+        self._de_dispersed_data = None
+
+    # FIXME: There could be no preprocessing at all!
+    # FIXME: No caching for pre-processing? Use previous steps to create hash
+    def pre_process(self, preprocess_func, *args, **kwargs):
+
+        args = args or self.preprocess_args
+        kwargs = kwargs or self.preprocess_kwargs
+        # Will only search for cached values with the same de-dispersion & pre-
+        # processing parameters
+        m = self._de_disp_m.copy()
+        margs = [x.__repr__() for x in args]
+        mkwargs = [x.__repr__() for x in kwargs.values()]
+        map(m.update, margs + mkwargs)
+        if preprocess_func is None:
+            m.update(self._preprocess_func.__name__)
+            key = m.hexdigest()
+            result = self._preprocessed_cache.get(key, None)
+            if result is not None:
+                print "Found cached preprocessed data..."
+            else:
+                result = self._preprocess_func(self._de_dispersed_data, *args,
+                                               **kwargs)
+                # Put to cache
+                self._preprocessed_cache[key] = result
+        else:
+            m.update(preprocess_func.__name__)
+            key = m.hexdigest()
+            result = self._preprocessed_cache.get(key, None)
+            if result is not None:
+                print "Found cached preprocessed data..."
+            else:
+                result = preprocess_func(self._de_dispersed_data, *args,
+                                         **kwargs)
+                self._preprocessed_cache[key] = result
+
+        self._pre_processed_data = result
+
+    def search(self, search_func, *args, **kwargs):
         """
         Search candidates in optionally preprocessed dynamical spectra.
 
         :return:
             List of ``Candidates`` instances.
         """
-        de_dispersed_dsp = self._de_disperse()
-        if self.preprocess_func is not None:
-            to_search = self.preprocess_func(de_dispersed_dsp)
+        args = args or self.search_args
+        kwargs = kwargs or self.search_kwargs
+        if search_func is None:
+            candidates = self._search_func(self._pre_processed_data, *args,
+                                           **kwargs)
         else:
-            to_search = de_dispersed_dsp
-        candidates = self.search_func(to_search)
+            candidates = search_func(self._pre_processed_data, *args, **kwargs)
+
+        return candidates
+
+    # Gimme many arguments!
+    def run(self, de_disp_func=None, search_func=None, preprocess_func=None,
+            de_disp_args=[], de_disp_kwargs={}, search_args=[],
+            search_kwargs={}, preprocess_args=[], preprocess_kwargs={}):
+        # If no arguments are supplied => use arguments from constructor
+        de_disp_func = de_disp_func or self._de_disp_func
+        preprocess_func = preprocess_func or self._preprocess_func
+        search_func = search_func or self._search_func
+        de_disp_args = de_disp_args or self.de_disp_args
+        de_disp_kwargs = de_disp_kwargs or self.de_disp_kwargs
+
+        self.de_disperse(de_disp_func, *de_disp_args, **de_disp_kwargs)
+
+        preprocess_args = preprocess_args or self.preprocess_args
+        preprocess_kwargs = preprocess_kwargs or self.preprocess_kwargs
+
+        self.pre_process(preprocess_func, *preprocess_args, **preprocess_kwargs)
+
+        search_args = search_args or self.search_args
+        search_kwargs = search_kwargs or self.search_kwargs
+
+        candidates = self.search(search_func, *search_args, **search_kwargs)
         return candidates
 
 
@@ -130,33 +221,6 @@ def train_classifyer(dsp, amps, widths, dms, times=None):
     for pars in zip(times, amps, widths, dms):
         print "Adding pulse wih t0, amp, width, DM = ", pars
         frame.add_pulse(*pars)
-
-
-class _function_wrapper(object):
-    """
-    This is a hack to make the functions pickleable when ``args`` or ``kwargs``
-    are also included.
-
-    """
-    def __init__(self, f, args, kwargs):
-        self.f = f
-        self.args = args
-        self.kwargs = kwargs
-
-    def __call__(self, x):
-        try:
-            return self.f(x, *self.args, **self.kwargs)
-        except:
-            import traceback
-            import inspect
-            print("frb: Exception while calling your function:",
-                  inspect.stack()[0][3])
-            print("  params:", x)
-            print("  args:", self.args)
-            print("  kwargs:", self.kwargs)
-            print("  exception:")
-            traceback.print_exc()
-            raise
 
 
 if __name__ == '__main__':
@@ -199,7 +263,45 @@ if __name__ == '__main__':
                         preprocess_kwargs={'disk_size': 3,
                                            'threshold_perc': 98.,
                                            'statistic': 'mean'})
-    candidates = searcher.search()
+    candidates = searcher.run()
+    print "Found {} pulses".format(len(candidates))
+    for candidate in candidates:
+        max_pos = candidate['max_pos']
+        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
+                                          max_pos[0] * d_dm)
+
+    # Using calculated ``Searcher._de_dispersed_data`` & ``_preprocessed_data``
+    candidates = searcher.search(search_candidates, n_d_x=8., n_d_y=15.)
+    print "Found {} pulses".format(len(candidates))
+    for candidate in candidates:
+        max_pos = candidate['max_pos']
+        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
+                                          max_pos[0] * d_dm)
+
+    # Going through all pipeline & using cached de-dispersed values
+    candidates = searcher.run(preprocess_kwargs={'disk_size': 3,
+                                                 'threshold_perc': 95.,
+                                                 'statistic': 'mean'})
+    print "Found {} pulses".format(len(candidates))
+    for candidate in candidates:
+        max_pos = candidate['max_pos']
+        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
+                                          max_pos[0] * d_dm)
+    dm_grid = np.arange(0., 1000., 50.)
+    # Going through all pipeline
+    candidates = searcher.run(preprocess_kwargs={'disk_size': 3,
+                                                 'threshold_perc': 95.,
+                                                 'statistic': 'mean'},
+                              de_disp_args=[dm_grid])
+    print "Found {} pulses".format(len(candidates))
+    for candidate in candidates:
+        max_pos = candidate['max_pos']
+        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
+                                          max_pos[0] * d_dm)
+
+    # Going through all pipeline & using cached de-dispersed and pre-processed
+    # values
+    candidates = searcher.run(search_kwargs={'n_d_x': 9., 'n_d_y': 17.},)
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
         max_pos = candidate['max_pos']

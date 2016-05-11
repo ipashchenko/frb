@@ -69,51 +69,7 @@ def de_disperse(dyn_spectr, dm_values, *args, **kwargs):
     return values
 
 
-def combain_tdm(tdm1, tdm2, nu_high1, d_nu1, nu_high2, d_t, dm_values):
-    """
-    Function that adds t-DM arrays from dedispersion of different frequency
-    bands.
-
-    :param tdm1:
-        2D array of de-dispersed values of first (high frequency) band.
-    :param tdm2:
-        2D array of de-dispersed values of second (low frequency) band.
-    :param nu_high1:
-        Highest frequency of first band.
-    :param d_nu1:
-        Frequency width of first band.
-    :param nu_high2:
-        Highest frequency of second band.
-    :param d_t:
-        Time step [s].
-    :param dm_values:
-        Array-like of DM values to de-disperse [cm^3 /pc].
-
-    :return:
-        2D TDM-array of de-dispersed values combined.
-    """
-    assert np.shape(tdm1) == np.shape(tdm2)
-    assert np.shape(tdm1)[0] == len(dm_values)
-
-    # Calculate shift of time caused by de-dispersion in first (high frequency)
-    # band for all values of DM
-    dt_all = k * dm_values * (1. / (nu_high1 + d_nu1) ** 2. -
-                              1. / nu_high1 ** 2.)
-    # Find what number of time bins corresponds to this shifts
-    nt_all = vint(vround(dt_all / d_t))
-
-    # Create array for TDM
-    values = np.zeros(np.shape(tdm1), dtype=float)
-
-    # Cycle over DM values and fill TDM array for others DM values
-    for i, nt in enumerate(nt_all):
-        # Find at which frequency channels time shifts have occurred
-        values[i] = tdm1[i] + np.roll(tdm2[i], -nt)
-
-    return values
-
-
-    # FIXME: at small ``dt`` it uses too small DM-step for my laptop RAM:)
+# It is a one step for next function
 def de_disperse_freq_average(params):
     """
     De-disperse frame using specified value of DM and average in frequency.
@@ -125,8 +81,6 @@ def de_disperse_freq_average(params):
         averaged de-dispersed dyn. spectra.
     """
     dm, dsp, nu, nu_max, d_t = params
-    # MHz ** 2 * cm ** 3 * s / pc
-    k = 1. / (2.410331 * 10 ** (-4))
     n_nu, n_t = dsp.shape
 
     # Calculate shift of time caused by de-dispersion for all channels
@@ -142,25 +96,33 @@ def de_disperse_freq_average(params):
     return values / n_nu
 
 
-def multi_wrapper(func):
-    def wrap(args):
-        return func(*args)
-    return wrap
-
-
-def noncoherent_dedisperse(dsp, dm_grid, nu, nu_max, d_t, savefig=None, threads=1):
+def noncoherent_dedisperse(dsp, dm_grid, threads=1, **kwargs):
     """
-    Method that de-disperse ``Frame`` instance with range values of
-    dispersion measures and average them in frequency to obtain image in
-    (t, DM)-plane.
+    Method that de-disperse dynamical spectra with range values of dispersion
+    measures and average them in frequency to obtain image in (t, DM)-plane.
+
+    :param dsp:
+        Dynamical spectra numpy array.
     :param dm_grid:
         Array-like of value of DM on which to de-disperse [cm^3/pc].
-    :param savefig: (optional)
-        File to save picture.
     :param threads: (optional)
         Number of threads used for parallelization with ``multiprocessing``
-        module. If > 1 then it isn't used. (default: 1)
+        module. If ``1`` then it isn't used. (default: 1)
+    :param kwargs:
+        Keyword arguments that should contain ``nu_max``, ``d_nu`` & ``d_t``
+        parameters. See code for explanation.
     """
+    # Frequency of highest frequency channel [MHz].
+    nu_max = kwargs['nu_max']
+    # Width of spectral channel [MHz].
+    d_nu = kwargs['d_nu']
+    # Time step [s].
+    d_t = kwargs['d_t']
+
+    n_nu, n_t = dsp.shape
+    nu = np.arange(n_nu, dtype=float)
+    nu = (nu_max - nu * d_nu)[::-1]
+
     pool = None
     if threads > 1:
         pool = multiprocessing.Pool(threads, maxtasksperchild=1000)
@@ -191,6 +153,8 @@ def to_shared_array(array):
     Function that creates shared array with data - copy of data in user supplied
     array.
     :param array:
+        2D numpy.ndarray from which to make shared array.
+
     :return:
         Shared array.
     """
@@ -198,39 +162,5 @@ def to_shared_array(array):
     i, j = array.shape
     shared_array_base = multiprocessing.Array(ctypes.c_float, i * j)
     shared_array =  np.ctypeslib.as_array(shared_array_base.get_obj()).reshape((i, j))
-    shared_array += dsp.copy()
+    shared_array += array.copy()
     return shared_array
-
-if __name__ == '__main__':
-    from fits_io import get_dyn_spectr
-    idi_fits = '/mnt/frb_data/raw_data/re03jy/RE03JY_EF_C_AUTO.idifits'
-    t, nu_array, dsp = get_dyn_spectr(idi_fits, time=slice(0, 600000),
-                                      complex_indx=0, stokes_indx=0)
-    dsp += get_dyn_spectr(idi_fits, time=slice(0, 600000), complex_indx=0,
-                          stokes_indx=1)[2]
-    dsp *= 0.5
-    nu = np.reshape(nu_array, 128) / 10 ** 6
-    nu_max = np.max(nu_array.ravel()) / 10 ** 6
-    d_nu = (nu_array[0][1:] - nu_array[0][:-1])[0] / 10 ** 6
-    d_t = (t[1] - t[0]).sec
-    ddsp_kwargs = dict()
-    ddsp_kwargs.update({'nu_max': nu_max, 'd_nu': d_nu, 'd_t': d_t})
-    from frames import Frame
-    frame = Frame(128, len(t), nu_max, 0., 32./128, d_t)
-    frame.add_values(dsp)
-    for i in range(10):
-        frame.add_pulse(50. * (i + 1), 5. / 2. ** i, 0.001, dm=500.)
-    dm_grid = np.arange(0., 1000., 50.)
-    print("Dedispersing...")
-    tdm = noncoherent_dedisperse(frame.values, dm_grid, nu, nu_max, d_t,
-                                 threads=4)
-    print("Searching candidates...")
-    search_kwargs = {'threshold': 99.85, 'n_d_x': 3., 'n_d_y': 15.}
-    from search import search_candidates
-    candidates = search_candidates(tdm, **search_kwargs)
-    for candidate in candidates:
-        print (t[candidate['max_pos'][1]] - t[0]).sec,\
-            dm_grid[candidate['max_pos'][0]]
-        print "Max: ", tdm[candidate['max_pos'][0], candidate['max_pos'][1]]
-        print "dx: ", candidate['dx']
-        print "dy: ", candidate['dy']

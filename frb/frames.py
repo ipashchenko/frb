@@ -3,6 +3,7 @@ import ctypes
 import numpy as np
 import pickle_method
 from utils import vint, vround, delta_dm_max
+from astropy.time import Time
 
 try:
     import matplotlib.pyplot as plt
@@ -22,7 +23,7 @@ class Frame(object):
     :param nu_0:
         Frequency of highest frequency channel [MHz].
     :param t_0:
-        Time of first measurement.
+        Time of first measurement. Instance of ``astropy.time.Time`` class.
     :param dnu:
         Width of spectral channel [MHz].
     :param dt:

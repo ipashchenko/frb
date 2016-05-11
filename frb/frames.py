@@ -63,17 +63,12 @@ class Frame(object):
         """
         raise NotImplementedError
 
-    # FIXME: at small ``dt`` it uses too small DM-step for my laptop RAM:)
-    def de_disperse(self, dm, replace=False):
+    def _de_disperse_by_value(self, dm):
         """
         De-disperse frame using specified value of DM.
 
         :param dm:
             Dispersion measure to use in de-dispersion [cm^3 / pc].
-        :param replace: (optional)
-            Replace instance's frame values with de-dispersed ones? (default:
-            ``False``)
-
         """
         # MHz ** 2 * cm ** 3 * s / pc
         k = 1. / (2.410331 * 10 ** (-4))
@@ -88,19 +83,16 @@ class Frame(object):
             values.append(np.roll(self.values[i], -nt_all[i]))
         values = np.vstack(values)
 
-        if replace:
-            self.values = values[:, :]
         return values
 
-    # FIXME: at small ``dt`` it uses too small DM-step for my laptop RAM:)
-    def _de_disperse_freq_average(self, dm):
+    def _de_disperse_by_value_freq_average(self, dm):
         """
         De-disperse frame using specified value of DM and average in frequency.
 
         :param dm:
             Dispersion measure to use in de-dispersion [cm^3 / pc].
 
-        :notes:
+        :note:
             This method avoids creating ``(n_nu, n_t)`` arrays and must be
             faster for data with big sizes. But it returns already frequency
             averaged de-dispersed dyn. spectra.
@@ -120,50 +112,6 @@ class Frame(object):
             values += np.roll(self.values[i], -nt_all[i])
 
         return values / self.n_nu
-
-    def average_in_time(self, values=None, plot=False):
-        """
-        Average frame in time.
-
-        :param values: ``(n_nu, n_t)`` (optional)
-            Numpy array of Frame values to average. If ``None`` then use current
-            instance's values. (default: ``None``)
-        :param plot: (optional)
-            Plot figure? If ``False`` then only return array. (default:
-            ``False``)
-
-        :return:
-            Numpy array with length equals the number of frequency channels.
-        """
-        if values is None:
-            values = self.values
-        result = np.mean(values, axis=1)
-        if plt is not None and plot:
-            plt.plot(np.arange(self.n_nu), result, '.k')
-            plt.xlabel("frequency channel #")
-        return result
-
-    def average_in_freq(self, values=None, plot=False):
-        """
-        Average frame in frequency.
-
-        :param values: ``(n_t, n_nu)`` (optional)
-            Numpy array of Frame values to average. If ``None`` then use current
-            instance's values. (default: ``None``)
-        :param plot: (optional)
-            Plot figure? If ``False`` then only return array. (default:
-            ``False``)
-
-        :return:
-            Numpy array with length equals number of time steps.
-        """
-        if values is None:
-            values = self.values
-        result = np.mean(values, axis=0)
-        if plt is not None and plot:
-            plt.plot(np.arange(self.n_t), result, '.k')
-            plt.xlabel("time steps")
-        return result
 
     # TODO: if one choose what channels to plot - use ``extent`` kwarg.
     def plot(self, plot_indexes=True, savefig=None):
@@ -237,10 +185,7 @@ class Frame(object):
 
     def add_noise(self, std):
         """
-        Add noise to frame using specified gaussian process or simple
-        rayleigh-distributed noise.
-
-        Correlated noise is correlated along the frequency axis.
+        Add noise to frame using specified rayleigh-distributed noise.
 
         :param std:
             Std of rayleigh-distributed uncorrelated noise.
@@ -249,18 +194,6 @@ class Frame(object):
                                    size=(self.n_t *
                                          self.n_nu)).reshape(np.shape(self.values))
         self.values += noise
-
-    def _step_dedisperse(self, dm):
-
-        """
-        Method that de-disperses frame using specified value of DM and frequency
-        averages the result.
-
-        :param dm:
-        :return:
-        """
-        values = self.de_disperse(dm)
-        return self.average_in_freq(values)
 
     # TODO: Check optimal value of ``dm_delta``
     def create_dm_grid(self, dm_min, dm_max, dm_delta=None):
@@ -278,16 +211,7 @@ class Frame(object):
         :return:
             Numpy array of DM values [cm^3 / pc]
         """
-        if dm_delta is None:
-            nu_max = self.nu_0
-            # Note ``-1``
-            nu_min = self.nu_0 - (self.n_nu - 1) * self.dnu
-            # Find step for DM grid
-            # Seems that ``5`` is good choice (1/200 of DM range)
-            dm_delta = 5 * delta_dm_max(nu_max, nu_min, self.dt)
-
-        # Create grid of searched DM-values
-        return np.arange(dm_min, dm_max, dm_delta)
+        raise NotImplementedError
 
     def grid_dedisperse(self, dm_grid, threads=1):
         """
@@ -312,7 +236,8 @@ class Frame(object):
             m = map
 
         # Accumulator of de-dispersed frequency averaged frames
-        frames = list(m(self._de_disperse_freq_average, dm_grid.tolist()))
+        frames = list(m(self._de_disperse_by_value_freq_average,
+                        dm_grid.tolist()))
         frames = np.array(frames)
 
         if pool:

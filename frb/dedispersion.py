@@ -10,7 +10,7 @@ vround = np.vectorize(round)
 k = 1. / (2.410331 * 10 ** (-4))
 
 
-def de_disperse(dyn_spectr, dm_values, *args, **kwargs):
+def de_disperse_cumsum(dyn_spectr, dm_values, *args, **kwargs):
     """
     De-disperse dynamical spectra with grid of user specifies values of DM.
 
@@ -38,7 +38,6 @@ def de_disperse(dyn_spectr, dm_values, *args, **kwargs):
     dm_values = np.array(dm_values)
     n_nu, n_t = dyn_spectr.shape
     nu = np.arange(n_nu, dtype=float)
-    # FIXME: I calculate it when reading FITS
     nu = (nu_max - nu * d_nu)[::-1]
     # Pre-calculating cumulative sums and their difference
     cumsums = np.cumsum(dyn_spectr[::-1, :], axis=0)
@@ -70,7 +69,7 @@ def de_disperse(dyn_spectr, dm_values, *args, **kwargs):
 
 
 # It is a one step for next function
-def de_disperse_freq_average(params):
+def _de_disperse_by_value_freq_average(params):
     """
     De-disperse frame using specified value of DM and average in frequency.
     :param dm:
@@ -137,7 +136,7 @@ def noncoherent_dedisperse(dsp, dm_grid, threads=1, **kwargs):
     params = [(dm, dsp_shared, nu, nu_max, d_t) for dm in dm_grid]
 
     # Accumulator of de-dispersed frequency averaged frames
-    frames = list(m(de_disperse_freq_average, params))
+    frames = list(m(_de_disperse_by_value_freq_average, params))
     frames = np.array(frames)
 
     if pool:

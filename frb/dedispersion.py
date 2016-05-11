@@ -3,6 +3,7 @@ import ctypes
 import multiprocessing
 
 
+# TODO: Wrap methods of ``Frame`` here
 vint = np.vectorize(int)
 vround = np.vectorize(round)
 # MHz ** 2 * cm ** 3 * s / pc

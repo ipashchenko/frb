@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# from candidates import Candidate, SearchedData
+from candidates import Candidate, SearchedData
 import hashlib
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -118,25 +118,8 @@ class Searcher(object):
         """
         candidates = search_func(self._pre_processed_data, *args, **kwargs)
 
-        # engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db")
-        # metadata = Base.metadata
-        # metadata.create_all(engine)
-
-        # from sqlalchemy.orm import sessionmaker
-        # Session = sessionmaker(bind=engine)
-        # session = Session()
-        # # Save to DB metadata of dsp
-        # searched_data = SearchedData(algo, **meta_data)
-        # session.add(searched_data)
-        # # Save to DB candidates
-        # for candidate_ in candidates:
-        #     candidate = Candidate(candidate_.t, candidate_.dm)
-        #     session.add(candidate)
-        # session.commit()
-
         return candidates
 
-    # Gimme many arguments!
     def run(self, de_disp_func=None, search_func=None, preprocess_func=None,
             de_disp_args=[], de_disp_kwargs={}, search_args=[],
             search_kwargs={}, preprocess_args=[], preprocess_kwargs={}):
@@ -144,6 +127,29 @@ class Searcher(object):
         self.de_disperse(de_disp_func, *de_disp_args, **de_disp_kwargs)
         self.pre_process(preprocess_func, *preprocess_args, **preprocess_kwargs)
         candidates = self.search(search_func, *search_args, **search_kwargs)
+
+        # Save to DB metadata of dsp
+        algo = 'de_disp_{}_{}_{} pre_process_{}_{}_{}' \
+               ' search_{}_{}_{}'.format(de_disp_func.__name__, de_disp_args,
+                                         de_disp_kwargs,
+                                         preprocess_func.__name__,
+                                         preprocess_args, preprocess_kwargs,
+                                         search_func.__name__, search_args,
+                                         search_kwargs)
+        searched_data = SearchedData(algo=algo, **meta_data)
+        searched_data.candidates = candidates
+        # Saving searched meta-data and found candidates to DB
+        engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db",
+                               echo=True)
+        metadata = Base.metadata
+        metadata.create_all(engine)
+
+        from sqlalchemy.orm import sessionmaker
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        session.add(searched_data)
+        session.commit()
+
         return candidates
 
 
@@ -184,23 +190,23 @@ if __name__ == '__main__':
                               de_disp_args=[dm_grid],
                               de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
                                               'd_t': 1./1000},
-                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.},
+                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
+                                             'd_t': 0.001, 'd_dm': d_dm},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 98.,
                                                  'statistic': 'mean'})
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
-        max_pos = candidate['max_pos']
-        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
-                                          max_pos[0] * d_dm)
+        print candidate
 
     # Using calculated ``Searcher._de_dispersed_data`` & ``_preprocessed_data``
-    candidates = searcher.search(search_candidates, n_d_x=8., n_d_y=15.)
+    # FIXME: This is a feature - candidates & searched data won't go to DB when
+    # calling ``Searcher.search`` explicitly!
+    candidates = searcher.search(search_candidates, n_d_x=8., n_d_y=15.,
+                                 d_t=0.001, d_dm=d_dm)
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
-        max_pos = candidate['max_pos']
-        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
-                                          max_pos[0] * d_dm)
+        print candidate
 
     # Going through all pipeline & using cached de-dispersed values because
     # preprocessing parameters have changed
@@ -210,15 +216,14 @@ if __name__ == '__main__':
                               de_disp_args=[dm_grid],
                               de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
                                               'd_t': 1./1000},
-                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.},
+                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
+                                             'd_t': 0.001, 'd_dm': d_dm},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 95.,
                                                  'statistic': 'mean'})
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
-        max_pos = candidate['max_pos']
-        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
-                                          max_pos[0] * d_dm)
+        print candidate
     dm_grid = np.arange(0., 1000., 50.)
     # Going through all pipeline because even de-dispersion parameters have
     # changed
@@ -228,15 +233,14 @@ if __name__ == '__main__':
                               de_disp_args=[dm_grid],
                               de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
                                               'd_t': 1./1000},
-                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.},
+                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
+                                             'd_t': 0.001, 'd_dm': 50.},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 95.,
                                                  'statistic': 'mean'})
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
-        max_pos = candidate['max_pos']
-        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
-                                          max_pos[0] * d_dm)
+        print candidate
 
     # Going through all pipeline & using cached de-dispersed and pre-processed
     # values
@@ -249,10 +253,9 @@ if __name__ == '__main__':
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 95.,
                                                  'statistic': 'mean'},
-                              search_kwargs={'n_d_x': 9., 'n_d_y': 17.})
+                              search_kwargs={'n_d_x': 9., 'n_d_y': 17.,
+                                             'd_t': 0.001, 'd_dm': 50.})
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
-        max_pos = candidate['max_pos']
-        print "t0 = {} c, DM = {}".format(max_pos[1] * float(frame.dt),
-                                          max_pos[0] * d_dm)
+        print candidate
 

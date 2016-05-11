@@ -7,7 +7,9 @@ Base = declarative_base()
 
 
 class SearchedData(Base):
-    """"""
+    """
+    Class that describes dynamical spectra and it's metadata.
+    """
     __tablename__ = "searched_data"
 
     id = Column(Integer, primary_key=True)
@@ -38,11 +40,10 @@ class SearchedData(Base):
 
 class Candidate(Base):
     """
-    Candidate Class
-
-    Create some class properties before initilization
+    Class that describes FRB candidates related to dynamical spectra searched.
     """
     __tablename__ = "candidates"
+
     id = Column(Integer, primary_key=True)
     t = Column(String)
     dm = Column(Float)
@@ -54,7 +55,6 @@ class Candidate(Base):
     candidate = relation(SearchedData, backref=backref('candidates',
                                                        order_by=id))
 
-    #----------------------------------------------------------------------
     def __init__(self, t, dm):
         """Constructor"""
         self.t = t
@@ -69,9 +69,6 @@ class Candidate(Base):
 engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db")
                        # echo=True)
 
-# # get a handle on the table object
-# searched_data_table = SearchedData.__table__
-# get a handle on the metadata
 # This creates tables
 metadata = Base.metadata
 metadata.create_all(engine)
@@ -80,33 +77,35 @@ from sqlalchemy.orm import sessionmaker
 
 Session = sessionmaker(bind=engine)
 session = Session()
-
-some_searched_data = SearchedData("AR", "C", "U", "L", "raks3ar", "some_algo")
-session.add(some_searched_data)
-some_searched_data_too = SearchedData("WB", "L", "U", "L", "raks3az", "some_algo")
-session.add(some_searched_data_too)
 session.commit()
 
-some_searched_data.candidates = [Candidate("0.01", 500.),
-                                 Candidate("0.41", 30.)]
-some_searched_data_too.candidates = [Candidate("0.4", 100.)]
-session.commit()
-
-all_searched_data = session.query(SearchedData).all()
-print all_searched_data
-all_candidates = session.query(Candidate).all()
-print all_candidates
-
-from sqlalchemy.orm import join
-sql = session.query(SearchedData).select_from(join(SearchedData, Candidate))
-data = sql.filter(SearchedData.freq == 'L').filter(Candidate.dm > 50.).all()
-print data
-sql = session.query(Candidate).select_from(join(SearchedData, Candidate))
-data = sql.filter(SearchedData.freq == 'L').filter(Candidate.dm > 50.).all()
-print data
-
-# sql = session.query(SearchedData, Candidate)
-# sql = sql.filter(SearchedData.id == Candidate.searched_data_id)
-# sql = sql.filter(SearchedData.antenna == 'AR')
-# for u, a in sql.all():
+# Some examples commented out
+# some_searched_data = SearchedData("AR", "C", "U", "L", "raks3ar", "some_algo")
+# session.add(some_searched_data)
+# some_searched_data_too = SearchedData("WB", "L", "U", "L", "raks3az", "some_algo")
+# session.add(some_searched_data_too)
+# session.commit()
+#
+# some_searched_data.candidates = [Candidate("0.01", 500.),
+#                                  Candidate("0.41", 30.)]
+# some_searched_data_too.candidates = [Candidate("0.4", 100.)]
+# session.commit()
+#
+# all_searched_data = session.query(SearchedData).all()
+# print all_searched_data
+# all_candidates = session.query(Candidate).all()
+# print all_candidates
+#
+# from sqlalchemy.orm import join
+# sql = session.query(SearchedData).select_from(join(SearchedData, Candidate))
+# data = sql.filter(SearchedData.freq == 'L').filter(Candidate.dm > 50.).all()
+# print data
+# sql = session.query(Candidate).select_from(join(SearchedData, Candidate))
+# data = sql.filter(SearchedData.freq == 'L').filter(Candidate.dm > 50.).all()
+# print data
+#
+# # sql = session.query(SearchedData, Candidate)
+# # sql = sql.filter(SearchedData.id == Candidate.searched_data_id)
+# # sql = sql.filter(SearchedData.antenna == 'AR')
+# # for u, a in sql.all():
 #     print u, a

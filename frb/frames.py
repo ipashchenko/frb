@@ -4,24 +4,13 @@ import numpy as np
 import pickle_method
 from utils import vint, vround, delta_dm_max
 
-from sqlalchemy import Column, String
-from sqlalchemy.ext.declarative import declarative_base
-
-try:
-    import george
-    from george import kernels
-except ImportError:
-    george = None
 try:
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
 
 
-Base = declarative_base()
-
-
-class Frame(Base):
+class Frame(object):
     """
     Basic class that represents a set of regularly spaced frequency channels
     with regularly measured values (time sequence of autospectra).
@@ -40,18 +29,7 @@ class Frame(Base):
         Time step [s].
 
     """
-     __tablename__ = "processed_data"
-    
-    id = Column(Integer, primary_key=True)
-    exp_code = Column(String)
-    antenna = Column(String)
-    time = Column(String)
-    freq = Column(String)
-    band = Column(String)
-    pol = Column(String)
-    algo = Column(String)
-    
-    def __init__(self, n_nu, n_t, nu_0, t_0, dnu, dt, meta_data=None):
+    def __init__(self, n_nu, n_t, nu_0, t_0, dnu, dt):
         self.n_nu = n_nu
         self.n_t = n_t
         self.nu_0 = nu_0
@@ -67,15 +45,7 @@ class Frame(Base):
         self.t = t_0 + t * dt
         self.dt = dt
         self.dnu = dnu
-        self.meta_data = meta_data
-        self.exp_code = meta_data['exp_code']
-        self.antenna = meta_data['antenna']
-        self.time = meta_data['time']
-        self.freq = meta_data['freq']
-        self.band = meta_data['band']
-        self.pol = meta_data['pol']
-        self.algo = meta_data['algo']
-        
+
     def add_values(self, array):
         """
         Add dyn. spectra in form of numpy array (#ch, #t,) to instance.
@@ -265,7 +235,7 @@ class Frame(Base):
     def save_to_txt(self, fname):
         np.savetxt(fname, self.values.T)
 
-    def add_noise(self, std, kamp=None, kscale=None, kmean=0.0):
+    def add_noise(self, std):
         """
         Add noise to frame using specified gaussian process or simple
         rayleigh-distributed noise.
@@ -274,29 +244,11 @@ class Frame(Base):
 
         :param std:
             Std of rayleigh-distributed uncorrelated noise.
-        :param kamp: (optional)
-            Amplitude of GP kernel. If ``None`` then don't add correlated noise.
-            (default: ``None``)
-        :param kscale:
-            Scale of GP kernel [MHz]. If ``None`` then don't add correlated
-            noise.  (default: ``None``)
-        :param kmean: (optional)
-            Mean of GP kernel. (default: ``0.0``)
-
         """
         noise = np.random.rayleigh(std,
                                    size=(self.n_t *
                                          self.n_nu)).reshape(np.shape(self.values))
         self.values += noise
-        if kscale is not None and kamp is not None:
-            if not george:
-                raise Exception("Install george for correlated noise option.")
-            gp1 = george.GP(kamp * kernels.ExpSquaredKernel(kscale))
-            gp2 = george.GP(kamp * kernels.ExpSquaredKernel(kscale))
-            for i in xrange(self.n_t):
-                gp_samples = np.sqrt(gp1.sample(self.nu) ** 2. +
-                                     gp2.sample(self.nu) ** 2.)
-                self.values[:, i] += gp_samples
 
     def _step_dedisperse(self, dm):
 
@@ -310,6 +262,7 @@ class Frame(Base):
         values = self.de_disperse(dm)
         return self.average_in_freq(values)
 
+    # TODO: Check optimal value of ``dm_delta``
     def create_dm_grid(self, dm_min, dm_max, dm_delta=None):
         """
         Method that create DM-grid for current frame.
@@ -336,7 +289,7 @@ class Frame(Base):
         # Create grid of searched DM-values
         return np.arange(dm_min, dm_max, dm_delta)
 
-    def grid_dedisperse(self, dm_grid, savefig=None, threads=1):
+    def grid_dedisperse(self, dm_grid, threads=1):
         """
         Method that de-disperse ``Frame`` instance with range values of
         dispersion measures and average them in frequency to obtain image in
@@ -344,8 +297,6 @@ class Frame(Base):
 
         :param dm_grid:
             Array-like of value of DM on which to de-disperse [cm^3/pc].
-        :param savefig: (optional)
-            File to save picture.
         :param threads: (optional)
             Number of threads used for parallelization with ``multiprocessing``
             module. If > 1 then it isn't used. (default: 1)
@@ -369,30 +320,29 @@ class Frame(Base):
             pool.close()
             pool.join()
 
-        # Plot results
-        if savefig is not None:
-            plt.imshow(frames, interpolation='none', aspect='auto')
-            plt.xlabel('De-dispersed by DM freq.averaged dyn.spectr')
-            plt.ylabel('DM correction')
-            plt.yticks(np.linspace(0, len(dm_grid) - 10, 5, dtype=int),
-                       vint(dm_grid[np.linspace(0, len(dm_grid) - 10, 5,
-                                                dtype=int)]))
-            plt.colorbar()
-            plt.savefig(savefig, bbox_inches='tight')
-            plt.show()
-            plt.close()
-
         return frames
+
+
+class DynSpectra(Frame):
+    def __init__(self, n_nu, n_t, nu_0, t_0, dnu, dt, meta_data=None):
+        super(DynSpectra, self).__init__(n_nu, n_t, nu_0, t_0, dnu, dt)
+        self.meta_data = meta_data
+        self.exp_code = meta_data['exp_code']
+        self.antenna = meta_data['antenna']
+        self.time = meta_data['time']
+        self.freq = meta_data['freq']
+        self.band = meta_data['band']
+        self.pol = meta_data['pol']
 
 
 def create_from_txt(fname, nu_0, t_0, dnu, dt, n_nu_discard=0):
     """
     Function that creates instance of ``Frame`` class from text file.
-    
+
     :param fname:
         Name of txt-file with rows representing frequency channels and columns -
         1d-time series of data for each frequency channel.
-    
+
     :return:
         Instance of ``Frame`` class.
     """
@@ -410,9 +360,9 @@ def create_from_txt(fname, nu_0, t_0, dnu, dt, n_nu_discard=0):
         frame.values += values[n_nu_discard / 2 : -n_nu_discard / 2, :]
     else:
         frame.values += values
-        
+
     return frame
-        
+
 
 if __name__ == '__main__':
     import time

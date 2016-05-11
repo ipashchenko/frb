@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from candidates import Candidate, SearchedData
+import numpy as np
 import hashlib
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
+from astropy.time import Time, TimeDelta
 
 Base = declarative_base()
 
@@ -14,11 +16,31 @@ class Searcher(object):
     :param dsp:
         2D numpy array with dynamical spectra.
     :param meta_data:
-        Dictionary with metadata describing current dynamical spectra.
+        Dictionary with metadata describing current dynamical spectra. It must
+        include ``exp_name``, ``antenna``, ``freq``, ``band``, ``pol``, ``t_0``,
+        ``nu_max``, ``d_nu``, ``d_t`` keys.
+
+        Eg. {'exp_name': 'raks03ra', 'antenna': 'AR'. 'freq': 'L', 'band': 'U',
+        'pol': 'L', 't_0': ``instance of astropy.time.Time``, 'nu_max': 1684.0,
+        'd_nu': 0.5, 'd_t': ``instance of astopy.time.TimeDelta``}
     """
     def __init__(self, dsp, meta_data):
         self.dsp = dsp
+
+        # Parsing meta-data
+        n_nu, n_t = np.shape(dsp)
+        self.n_nu = n_nu
+        self.n_t = n_t
+        self.t_0 = meta_data.get('t_0')
+        self.d_nu = meta_data.get('d_nu')
+        d_t = meta_data.get('d_t')
+        self.t_end = self.t_0 + n_t * TimeDelta(d_t, format='sec')
+        self.d_t = d_t
+        self.nu_max = meta_data.get('nu_max')
+
         self.meta_data = meta_data
+        self.meta_data.update({'t_end': self.t_end.utc.datetime,
+                               't_0': self.t_0.utc.datetime})
 
         self._de_dispersed_cache = dict()
         self._preprocessed_cache = dict()
@@ -32,6 +54,8 @@ class Searcher(object):
 
 
     def de_disperse(self, de_disp_func, *args, **kwargs):
+        kwargs.update({'nu_max': self.nu_max, 'd_nu': self.d_nu,
+                       'd_t': self.d_t})
         m = hashlib.md5()
         margs = [x.__repr__() for x in args]
         mkwargs = [x.__repr__() for x in kwargs.values()]
@@ -84,6 +108,7 @@ class Searcher(object):
         :return:
             List of ``Candidate`` instances.
         """
+        kwargs.update({'t_0': self.t_0, 'd_t': self.d_t})
         candidates = search_func(self._pre_processed_data, *args, **kwargs)
 
         return candidates
@@ -147,7 +172,7 @@ class Searcher(object):
                                          preprocess_args, preprocess_kwargs,
                                          search_func.__name__, search_args,
                                          search_kwargs)
-        searched_data = SearchedData(algo=algo, **meta_data)
+        searched_data = SearchedData(algo=algo, **self.meta_data)
         searched_data.candidates = candidates
         # Saving searched meta-data and found candidates to DB
         engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db",
@@ -189,18 +214,17 @@ if __name__ == '__main__':
     print "Adding noise"
     frame.add_noise(0.5)
 
-    meta_data = {'antenna': 'WB', 'freq': 1684., 'band': 'L', 'pol': 'R',
-                 'exp_code': 'raks00'}
-    from dedispersion import de_disperse_cumsum as de_disperse
+    meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
+                 'exp_code': 'raks00', 'nu_max': 1684., 't_0': Time.now(),
+                 'd_nu': 16./256., 'd_t': 0.001}
+    from dedispersion import de_disperse_cumsum
     from search import search_candidates, create_ellipses
     dm_grid = np.arange(0., 1000., d_dm)
     searcher = Searcher(dsp=frame.values, meta_data=meta_data)
-    candidates = searcher.run(de_disp_func=de_disperse,
+    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                               search_func=search_candidates,
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],
-                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
-                                              'd_t': 1./1000},
                               search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
                                              'd_t': 0.001, 'd_dm': d_dm},
                               preprocess_kwargs={'disk_size': 3,
@@ -221,14 +245,13 @@ if __name__ == '__main__':
 
     # Going through all pipeline & using cached de-dispersed values because
     # preprocessing parameters have changed
-    candidates = searcher.run(de_disp_func=de_disperse,
+    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                               search_func=search_candidates,
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],
-                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
-                                              'd_t': 1./1000},
+                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256},
                               search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
-                                             'd_t': 0.001, 'd_dm': d_dm},
+                                             'd_dm': d_dm},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 95.,
                                                  'statistic': 'mean'})
@@ -238,7 +261,7 @@ if __name__ == '__main__':
     dm_grid = np.arange(0., 1000., 50.)
     # Going through all pipeline because even de-dispersion parameters have
     # changed
-    candidates = searcher.run(de_disp_func=de_disperse,
+    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                               search_func=search_candidates,
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],
@@ -255,7 +278,7 @@ if __name__ == '__main__':
 
     # Going through all pipeline & using cached de-dispersed and pre-processed
     # values
-    candidates = searcher.run(de_disp_func=de_disperse,
+    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                               search_func=search_candidates,
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, ForeignKey
+from sqlalchemy import Column, Integer, Float, String, ForeignKey, DateTime, Interval
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import backref, mapper, relation, sessionmaker
@@ -19,14 +19,25 @@ class SearchedData(Base):
     pol = Column(String)
     exp_code = Column(String)
     algo = Column(String)
+    t_0 = Column(DateTime)
+    t_end = Column(DateTime)
+    d_t = Column(Float)
+    d_nu = Column(Float)
+    nu_max = Column(Float)
 
-    def __init__(self, antenna, freq, band, pol, exp_code, algo):
+    def __init__(self, antenna, freq, band, pol, exp_code, algo, t_0=None,
+                 t_end=None, d_t=None, d_nu=None, nu_max=None):
         self.antenna = antenna
         self.freq = freq
         self.band = band
         self.pol = pol
         self.exp_code = exp_code
         self.algo = algo
+        self.t_0 = t_0
+        self.t_end = t_end
+        self.d_t = d_t
+        self.d_nu = d_nu
+        self.nu_max = nu_max
 
     def __repr__(self):
         return "Experiment: {}, antenna: {}, freq: {}," \
@@ -45,7 +56,7 @@ class Candidate(Base):
     __tablename__ = "candidates"
 
     id = Column(Integer, primary_key=True)
-    t = Column(String)
+    t = Column(DateTime)
     dm = Column(Float)
     searched_data_id = Column(Integer, ForeignKey('searched_data.id'))
 
@@ -57,7 +68,7 @@ class Candidate(Base):
 
     def __init__(self, t, dm):
         """Constructor"""
-        self.t = t
+        self.t = t.utc.datetime
         self.dm = dm
 
     def __repr__(self):

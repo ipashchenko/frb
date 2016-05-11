@@ -7,6 +7,7 @@ from rpy2.robjects import FloatVector
 from sklearn.tree import DecisionTreeRegressor
 import matplotlib.pyplot as plt
 from candidates import Candidate
+from astropy.time import TimeDelta
 
 
 def find_levels_bcp(ts, prob=0.95, p0=0.0001, burnin=500, mcmc=1000, w0=0.2):
@@ -191,7 +192,7 @@ def search_candidates_clf(dsp, frb_clf=None, training_frac=0.01):
 
 
 # TODO: All search functions must returns instances of ``Candidate`` class
-def search_candidates(image, n_d_x, n_d_y, d_t, d_dm):
+def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
 
     a = image.copy()
     s = generate_binary_structure(2, 2)
@@ -226,7 +227,8 @@ def search_candidates(image, n_d_x, n_d_y, d_t, d_dm):
     candidates = list()
     for _object in _objects:
         max_pos = _object['max_pos']
-        candidate = Candidate(max_pos[1] * float(d_t), max_pos[0] * float(d_dm))
+        candidate = Candidate(t_0 + max_pos[1] * TimeDelta(d_t, format='sec'),
+                              max_pos[0] * float(d_dm))
         candidates.append(candidate)
 
     return candidates

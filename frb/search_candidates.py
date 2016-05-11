@@ -191,7 +191,7 @@ if __name__ == '__main__':
 
     meta_data = {'antenna': 'WB', 'freq': 1684., 'band': 'L', 'pol': 'R',
                  'exp_code': 'raks00'}
-    from dedispersion import de_disperse
+    from dedispersion import de_disperse_cumsum as de_disperse
     from search import search_candidates, create_ellipses
     dm_grid = np.arange(0., 1000., d_dm)
     searcher = Searcher(dsp=frame.values, meta_data=meta_data)

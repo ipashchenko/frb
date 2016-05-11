@@ -13,40 +13,8 @@ class Searcher(object):
 
     :param dsp:
         2D numpy array with dynamical spectra.
-    :param de_disp_func:
-        Function that de-disperse dynamical spectra.
-    :param search_func:
-        Function that used to search candidates in optionally preprocessed
-        dynamical spectra and returns
     :param meta_data:
         Dictionary with metadata describing current dynamical spectra.
-    :param preprocess_func: (optional)
-        Function that optionally preprocesses dynamical spectra (e.g.
-        de-dispersion).
-    :param de_disp_args: (optional)
-        A list of optional positional arguments for ``de_disp_func``.
-        ``de_disp_func`` will be called with the sequence ``de_disp_func(dsp,
-        *de_disp_args, **de_disp_kwargs)``.
-    :param de_disp_kwargs: (optional)
-        A list of optional keyword arguments for ``de_disp_func``.
-        ``de_disp_func`` will be called with the sequence ``de_disp_func(dsp,
-        *de_disp_args, **de_disp_kwargs)``.
-    :param search_args: (optional)
-        A list of optional positional arguments for ``search_func``.
-        ``search_func`` will be called with the sequence ``search_func(dsp,
-        *search_args, **search_kwargs)``.
-    :param search_kwargs: (optional)
-        A list of optional keyword arguments for ``search_func``.
-        ``search_func`` will be called with the sequence ``search_func(dsp,
-        *search_args, **search_kwargs)``.
-    :param preprocess_args: (optional)
-        A list of optional positional arguments for ``preprocess_func``.
-        ``preprocess_func`` will be called with the sequence
-        ``preprocess_func(dsp, *preprocess_args, **preprocess_kwargs)``.
-    :param preprocess_kwargs: (optional)
-        A list of optional keyword arguments for ``preprocess_func``.
-        ``preprocess_func`` will be called with the sequence
-        ``preprocess_func(dsp, *preprocess_args, **preprocess_kwargs)``.
     """
     def __init__(self, dsp, meta_data):
         self.dsp = dsp
@@ -120,9 +88,52 @@ class Searcher(object):
 
         return candidates
 
-    def run(self, de_disp_func=None, search_func=None, preprocess_func=None,
+    def run(self, de_disp_func, search_func=None, preprocess_func=None,
             de_disp_args=[], de_disp_kwargs={}, search_args=[],
             search_kwargs={}, preprocess_args=[], preprocess_kwargs={}):
+        """
+
+        :param de_disp_func:
+            Function that used to de-disperse dynamical spectra.
+        :param search_func:
+            Function that used to search candidates in optionally preprocessed
+            dynamical spectra and returns list of ``Candidate`` instances.
+        :param preprocess_func: (optional)
+            Function that optionally preprocesses de-dispersed dynamical
+            spectra. If ``None`` then don't use preprocessing. (default:
+            ``None``)
+        :param de_disp_args: (optional)
+            A list of optional positional arguments for ``de_disp_func``.
+            ``de_disp_func`` will be called with the sequence
+            ``de_disp_func(dsp, *de_disp_args, **de_disp_kwargs)``.
+        :param de_disp_kwargs: (optional)
+            A list of optional keyword arguments for ``de_disp_func``.
+            ``de_disp_func`` will be called with the sequence
+            ``de_disp_func(dsp, *de_disp_args, **de_disp_kwargs)``.
+        :param search_args: (optional)
+            A list of optional positional arguments for ``search_func``.
+            ``search_func`` will be called with the sequence ``search_func(dsp,
+            *search_args, **search_kwargs)``.
+        :param search_kwargs: (optional)
+            A list of optional keyword arguments for ``search_func``.
+            ``search_func`` will be called with the sequence ``search_func(dsp,
+            *search_args, **search_kwargs)``.
+        :param preprocess_args: (optional)
+            A list of optional positional arguments for ``preprocess_func``.
+            ``preprocess_func`` will be called with the sequence
+            ``preprocess_func(dsp, *preprocess_args, **preprocess_kwargs)``.
+        :param preprocess_kwargs: (optional)
+            A list of optional keyword arguments for ``preprocess_func``.
+            ``preprocess_func`` will be called with the sequence
+            ``preprocess_func(dsp, *preprocess_args, **preprocess_kwargs)``.
+
+        :return:
+            List of ``Candidate`` instances.
+
+        :note:
+            When running through ``Searcher.run`` method it saves metadata on
+            processed dynamical spectra and candidates found to DB.
+        """
 
         self.de_disperse(de_disp_func, *de_disp_args, **de_disp_kwargs)
         self.pre_process(preprocess_func, *preprocess_args, **preprocess_kwargs)

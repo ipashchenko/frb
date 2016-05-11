@@ -1,20 +1,12 @@
 # -*- coding: utf-8 -*-
-# from candidates import Candidate
+from candidates import Candidate, SearchedData
 import hashlib
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 
-# TODO: Put dynamical spectra with it's metada to class (a-la ``frames.Frame``)?
-# Then we initialize ``Searcher`` instance with instance of this class. If so
-# then Sanya should implement creation instances of this new dynamical spectra
-# class with his code
-# FIXME: What if i want to process dynamical spectra with different algorithms?
-# Then one can initialize many ``Searcher`` instances with different
-# ``search_func``, it's arguments, optionally different ``preprocess_func`` and
-# it's arguments and put metadata about algorithms with it's parameters to
-# ``meta_data``. This is `Strategy`` pattern in OOP. But if some search
-# algorithms use the same ``preprocess_func`` and it's arguments then we have to
-# redo preprocessing each time. Thus i need implement different search with the
-# same preprocessed data.
 class Searcher(object):
     """
     Basic class that handles searching candidates in dynamical spectra.
@@ -157,7 +149,7 @@ class Searcher(object):
         Search candidates in optionally preprocessed dynamical spectra.
 
         :return:
-            List of ``Candidates`` instances.
+            List of ``Candidate`` instances.
         """
         args = args or self.search_args
         kwargs = kwargs or self.search_kwargs
@@ -166,6 +158,22 @@ class Searcher(object):
                                            **kwargs)
         else:
             candidates = search_func(self._pre_processed_data, *args, **kwargs)
+
+        # engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db")
+        # metadata = Base.metadata
+        # metadata.create_all(engine)
+
+        # from sqlalchemy.orm import sessionmaker
+        # Session = sessionmaker(bind=engine)
+        # session = Session()
+        # # Save to DB metadata of dsp
+        # searched_data = SearchedData(algo, **meta_data)
+        # session.add(searched_data)
+        # # Save to DB candidates
+        # for candidate_ in candidates:
+        #     candidate = Candidate(candidate_.t, candidate_.dm)
+        #     session.add(candidate)
+        # session.commit()
 
         return candidates
 

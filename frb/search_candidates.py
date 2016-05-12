@@ -175,8 +175,7 @@ class Searcher(object):
         searched_data = SearchedData(algo=algo, **self.meta_data)
         searched_data.candidates = candidates
         # Saving searched meta-data and found candidates to DB
-        engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db",
-                               echo=True)
+        engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db")
         metadata = Base.metadata
         metadata.create_all(engine)
 
@@ -226,7 +225,7 @@ if __name__ == '__main__':
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],
                               search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
-                                             'd_t': 0.001, 'd_dm': d_dm},
+                                             'd_dm': d_dm},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 98.,
                                                  'statistic': 'mean'})
@@ -238,7 +237,7 @@ if __name__ == '__main__':
     # FIXME: This is a feature - candidates & searched data won't go to DB when
     # calling ``Searcher.search`` explicitly!
     candidates = searcher.search(search_candidates, n_d_x=8., n_d_y=15.,
-                                 d_t=0.001, d_dm=d_dm)
+                                 d_dm=d_dm)
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
         print candidate
@@ -265,10 +264,9 @@ if __name__ == '__main__':
                               search_func=search_candidates,
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],
-                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
-                                              'd_t': 1./1000},
+                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256},
                               search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
-                                             'd_t': 0.001, 'd_dm': 50.},
+                                             'd_dm': 50.},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 95.,
                                                  'statistic': 'mean'})
@@ -282,13 +280,12 @@ if __name__ == '__main__':
                               search_func=search_candidates,
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],
-                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256,
-                                              'd_t': 1./1000},
+                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_perc': 95.,
                                                  'statistic': 'mean'},
                               search_kwargs={'n_d_x': 9., 'n_d_y': 17.,
-                                             'd_t': 0.001, 'd_dm': 50.})
+                                             'd_dm': 50.})
     print "Found {} pulses".format(len(candidates))
     for candidate in candidates:
         print candidate

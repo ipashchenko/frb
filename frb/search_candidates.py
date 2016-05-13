@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-from candidates import Candidate, SearchedData
-import numpy as np
+from candidates import SearchedData
 import hashlib
+import numpy as np
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from astropy.time import Time, TimeDelta
+from queries import connect_to_db
 
 Base = declarative_base()
 
@@ -56,6 +57,8 @@ class Searcher(object):
     def de_disperse(self, de_disp_func, *args, **kwargs):
         kwargs.update({'nu_max': self.nu_max, 'd_nu': self.d_nu,
                        'd_t': self.d_t})
+        # Sort kwargs keys before checking in cache
+        kwargs = {key: kwargs[key] for key in sorted(kwargs)}
         m = hashlib.md5()
         margs = [x.__repr__() for x in args]
         mkwargs = [x.__repr__() for x in kwargs.values()]
@@ -81,6 +84,8 @@ class Searcher(object):
     def pre_process(self, preprocess_func, *args, **kwargs):
         # Will only search for cached values with the same de-dispersion & pre-
         # processing parameters
+        # Sort kwargs keys before checking in cache
+        kwargs = {key: kwargs[key] for key in sorted(kwargs)}
         m = self._de_disp_m.copy()
         margs = [x.__repr__() for x in args]
         mkwargs = [x.__repr__() for x in kwargs.values()]
@@ -115,7 +120,8 @@ class Searcher(object):
 
     def run(self, de_disp_func, search_func=None, preprocess_func=None,
             de_disp_args=[], de_disp_kwargs={}, search_args=[],
-            search_kwargs={}, preprocess_args=[], preprocess_kwargs={}):
+            search_kwargs={}, preprocess_args=[], preprocess_kwargs={},
+            db_file=None):
         """
 
         :param de_disp_func:
@@ -175,118 +181,10 @@ class Searcher(object):
         searched_data = SearchedData(algo=algo, **self.meta_data)
         searched_data.candidates = candidates
         # Saving searched meta-data and found candidates to DB
-        engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db")
-        metadata = Base.metadata
-        metadata.create_all(engine)
-
-        from sqlalchemy.orm import sessionmaker
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        session.add(searched_data)
-        session.commit()
+        if db_file is not None:
+            session = connect_to_db(db_file)
+            session.add(searched_data)
+            session.commit()
 
         return candidates
-
-
-if __name__ == '__main__':
-    # Use case
-    import numpy as np
-
-    print "Creating Dynamical Spectra"
-    from frames import Frame
-    frame = Frame(256, 10000, 1684., 0., 16./256, 1./1000)
-    n_pulses = 30
-    # Step of de-dispersion
-    d_dm = 25.
-    print "Adding {} pulses".format(n_pulses)
-    np.random.seed(123)
-    amps = np.random.uniform(0.1, 0.15, size=n_pulses)
-    widths = np.random.uniform(0.001, 0.005, size=n_pulses)
-    dm_values = np.random.uniform(0, 1000, size=n_pulses)
-    times = np.random.uniform(0., 10., size=n_pulses)
-    for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
-        frame.add_pulse(t_0, amp, width, dm)
-        print "Adding pulse with t0={}, amp={}, width={}, dm={}".format(t_0,
-                                                                        amp,
-                                                                        width,
-                                                                        dm)
-    print "Adding noise"
-    frame.add_noise(0.5)
-
-    meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
-                 'exp_code': 'raks00', 'nu_max': 1684., 't_0': Time.now(),
-                 'd_nu': 16./256., 'd_t': 0.001}
-    from dedispersion import de_disperse_cumsum
-    from search import search_candidates, create_ellipses
-    dm_grid = np.arange(0., 1000., d_dm)
-    searcher = Searcher(dsp=frame.values, meta_data=meta_data)
-    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
-                              search_func=search_candidates,
-                              preprocess_func=create_ellipses,
-                              de_disp_args=[dm_grid],
-                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
-                                             'd_dm': d_dm},
-                              preprocess_kwargs={'disk_size': 3,
-                                                 'threshold_perc': 98.,
-                                                 'statistic': 'mean'})
-    print "Found {} pulses".format(len(candidates))
-    for candidate in candidates:
-        print candidate
-
-    # Using calculated ``Searcher._de_dispersed_data`` & ``_preprocessed_data``
-    # FIXME: This is a feature - candidates & searched data won't go to DB when
-    # calling ``Searcher.search`` explicitly!
-    candidates = searcher.search(search_candidates, n_d_x=8., n_d_y=15.,
-                                 d_dm=d_dm)
-    print "Found {} pulses".format(len(candidates))
-    for candidate in candidates:
-        print candidate
-
-    # Going through all pipeline & using cached de-dispersed values because
-    # preprocessing parameters have changed
-    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
-                              search_func=search_candidates,
-                              preprocess_func=create_ellipses,
-                              de_disp_args=[dm_grid],
-                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256},
-                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
-                                             'd_dm': d_dm},
-                              preprocess_kwargs={'disk_size': 3,
-                                                 'threshold_perc': 95.,
-                                                 'statistic': 'mean'})
-    print "Found {} pulses".format(len(candidates))
-    for candidate in candidates:
-        print candidate
-    dm_grid = np.arange(0., 1000., 50.)
-    # Going through all pipeline because even de-dispersion parameters have
-    # changed
-    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
-                              search_func=search_candidates,
-                              preprocess_func=create_ellipses,
-                              de_disp_args=[dm_grid],
-                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256},
-                              search_kwargs={'n_d_x': 5., 'n_d_y': 15.,
-                                             'd_dm': 50.},
-                              preprocess_kwargs={'disk_size': 3,
-                                                 'threshold_perc': 95.,
-                                                 'statistic': 'mean'})
-    print "Found {} pulses".format(len(candidates))
-    for candidate in candidates:
-        print candidate
-
-    # Going through all pipeline & using cached de-dispersed and pre-processed
-    # values
-    candidates = searcher.run(de_disp_func=de_disperse_cumsum,
-                              search_func=search_candidates,
-                              preprocess_func=create_ellipses,
-                              de_disp_args=[dm_grid],
-                              de_disp_kwargs={'nu_max': 1684., 'd_nu': 16./256},
-                              preprocess_kwargs={'disk_size': 3,
-                                                 'threshold_perc': 95.,
-                                                 'statistic': 'mean'},
-                              search_kwargs={'n_d_x': 9., 'n_d_y': 17.,
-                                             'd_dm': 50.})
-    print "Found {} pulses".format(len(candidates))
-    for candidate in candidates:
-        print candidate
 

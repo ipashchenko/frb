@@ -1,8 +1,7 @@
 from sqlalchemy import (Column, Integer, Float, String, ForeignKey, DateTime)
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import (backref, relation, aliased, sessionmaker)
-from sqlalchemy.sql import func
+from sqlalchemy.orm import (backref, relation, sessionmaker)
 
 
 Base = declarative_base()
@@ -15,7 +14,7 @@ class SearchedData(Base):
     __tablename__ = "searched_data"
 
     id = Column(Integer, primary_key=True)
-    antenna = Column(String),
+    antenna = Column(String)
     freq = Column(String)
     band = Column(String)
     pol = Column(String)
@@ -43,13 +42,11 @@ class SearchedData(Base):
         self.nu_max = nu_max
 
     def __repr__(self):
-        return "Experiment: {}, antenna: {}, freq: {}," \
-               " band: {}, polarization: {}, algo: {}".format(self.exp_code,
-                                                              self.antenna,
-                                                              self.freq,
-                                                              self.band,
-                                                              self.pol,
-                                                              self.algo)
+        return "Experiment: {}, antenna: {}, time begin: {}, time end: {}," \
+               "freq: {}, band: {}, polarization: {}," \
+               " algo: {}".format(self.exp_code, self.antenna, self.t_0,
+                                  self.t_end, self.freq, self.band, self.pol,
+                                  self.algo)
 
 
 class Candidate(Base):
@@ -81,7 +78,6 @@ class Candidate(Base):
 
 
 # create a connection to a sqlite database
-# turn echo on to see the auto-generated SQL
 engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db")
 
 # This creates tables
@@ -91,49 +87,3 @@ metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 session.commit()
-
-
-def query_frb(exp_code, d_dm, d_t):
-    """
-    Function that queries DB for FRB events. Any 2 candidates with close DM & t
-    values on different antennas will be reported.
-
-    :param exp_code:
-        Code of experiment.
-    :param d_dm:
-        Maximum DM difference allowed for events at different antennas.
-    :param d_t:
-        Maximum time interval between events at different antennas [s].
-
-    :return:
-        List of tuples with ``(t1, t2, dm1, dm2, searched_data1,
-        searched_data2)``, where ``searched_data`` - instances of
-        ``Searched_data`` classes for corresponding candidates.
-    """
-    candidates1 = aliased(Candidate)
-    candidates2 = aliased(Candidate)
-    searched1 = aliased(SearchedData)
-    searched2 = aliased(SearchedData)
-
-    query = session.query(candidates1.t, candidates2.t, candidates1.dm,
-                          candidates2.dm, searched1, searched2).join((searched1,
-                                                candidates1.searched_data_id ==
-                                                searched1.id),
-                                               (candidates2,
-                                                searched1.id ==
-                                                candidates2.searched_data_id),
-                                               (searched2,
-                                                candidates2.searched_data_id ==
-                                                searched2.id)).\
-        filter(searched2.exp_code == exp_code). \
-        filter(searched1.exp_code == exp_code).\
-        filter(func.abs(candidates1.dm - candidates2.dm) < d_dm).\
-        filter(candidates1.t < candidates2.t). \
-        filter(func.abs(func.julianday(candidates2.t) -
-                        func.julianday(candidates1.t)) * 86400. < d_t)
-    data = query.all()
-    for row in data:
-        print row
-
-    return data
-

@@ -1,9 +1,19 @@
-SELECT candidates.t, candidates2.t, ABS((julianday(candidates.t)-julianday(candidates2.t))) * 24 * 60 * 60, candidates.dm, candidates2.dm FROM candidates
-JOIN searched_data on candidates.searched_data_id = searched_data.id
-JOIN candidates as candidates2 on candidates2.searched_data_id == searched_data.id
-JOIN searched_data as searched_data2 on candidates2.searched_data_id = searched_data2.id
-WHERE searched_data.exp_code=='raks00' AND
-searched_data2.exp_code=='raks00' AND
-ABS(candidates.dm - candidates2.dm) < 50 AND
-candidates.t < candidates2.t AND
-ABS((julianday(candidates.t)-julianday(candidates2.t))) * 24 * 60 * 60 < 0.05
+SELECT t1.t, t2.t, t1.dm, t2.dm, t1.antenna, t2.antenna
+
+FROM
+
+(SELECT *  FROM candidates
+INNER JOIN searched_data on searched_data.id == candidates.searched_data_id) t1
+
+JOIN
+(SELECT *  FROM candidates
+INNER JOIN searched_data on searched_data.id == candidates.searched_data_id) t2
+
+ON t1.exp_code==t2.exp_code
+
+WHERE
+ABS(t1.dm - t2.dm) < 100 AND
+t1.t < t2.t AND
+t1.antenna != t2.antenna AND
+ABS((julianday(t1.t)-julianday(t2.t))) * 24 * 60 * 60 < 0.1
+

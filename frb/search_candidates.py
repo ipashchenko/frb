@@ -2,12 +2,8 @@
 from candidates import SearchedData
 import hashlib
 import numpy as np
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from astropy.time import Time, TimeDelta
+from astropy.time import TimeDelta
 from queries import connect_to_db
-
-Base = declarative_base()
 
 
 class Searcher(object):
@@ -52,7 +48,6 @@ class Searcher(object):
         self._de_disp_m = None
 
         self._pre_processed_data = None
-
 
     def de_disperse(self, de_disp_func, *args, **kwargs):
         kwargs.update({'nu_max': self.nu_max, 'd_nu': self.d_nu,
@@ -123,7 +118,7 @@ class Searcher(object):
             search_kwargs={}, preprocess_args=[], preprocess_kwargs={},
             db_file=None):
         """
-
+        
         :param de_disp_func:
             Function that used to de-disperse dynamical spectra.
         :param search_func:

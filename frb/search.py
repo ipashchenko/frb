@@ -1,10 +1,9 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from scipy.ndimage.measurements import maximum_position, label, find_objects
 from scipy.ndimage.morphology import generate_binary_structure
 from skimage.measure import regionprops
-from rpy2.robjects.packages import importr
-from rpy2.robjects import FloatVector
-from sklearn.tree import DecisionTreeRegressor
+from skimage.morphology import dilation
 import matplotlib.pyplot as plt
 from candidates import Candidate
 from astropy.time import TimeDelta
@@ -238,15 +237,27 @@ def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
 # can scale original, use ``median`` and then scale back - it is much faster
 # then mine
 def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
-                    statistic='mean'):
+                    statistic='mean', dilation_selem=np.ones((3, 3))):
     """
-    Function that preprocess de-dispersed plane `t-DM` by creating
+    Function that pre-process de-dispersed plane `t-DM` by creating
     characteristic inclined ellipses in places where FRB is sitting.
 
     :param tdm_image:
-    :param disk_size:
-    :param threshold_perc:
+        2D numpy.ndarray  of `t-DM` plane.
+    :param disk_size: (optional)
+        Disk size to use when calculating filtered values. (default: ``5``)
+    :param threshold_perc: (optional)
+        Threshold [0 - 100] to threshold image after filtering. (default:
+        ``99.5``)
+    :param statistic: (optional)
+        Statistic to use when filtering (``mean``, ``median`` or ``gauss``).
+        (default: ``mean``)
+    :param dilation_selem: (optional)
+        The neighborhood expressed as a 2-D array of 1’s and 0’s for dilation
+        step. (default: ``np.ones((3, 3))``)
+
     :return:
+        2D numpy.ndarray of thresholded image of `t - DM` plane.
     """
     statistic_dict = {'mean': circular_mean, 'median': circular_median,
                       'gauss': gaussian_filter}
@@ -254,6 +265,7 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
     image = statistic_dict[statistic](image, disk_size)
     threshold = np.percentile(image.ravel(), threshold_perc)
     image[image < threshold] = 0
+    image = dilation(image, dilation_selem)
     return image
 
 

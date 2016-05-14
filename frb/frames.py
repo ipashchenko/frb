@@ -2,8 +2,7 @@ import multiprocessing
 import ctypes
 import numpy as np
 import pickle_method
-from utils import vint, vround, delta_dm_max
-from astropy.time import Time
+from utils import vint, vround
 
 try:
     import matplotlib.pyplot as plt
@@ -291,14 +290,13 @@ def create_from_txt(fname, nu_0, t_0, dnu, dt, n_nu_discard=0):
 
 
 if __name__ == '__main__':
-    import time
     print "Creating frame"
-    frame = Frame(256, 1200000, 1684., 0., 16./256, 1./1000)
+    frame = Frame(256, 12000, 1684., 0., 16./256, 1./1000)
     print "Adding pulse"
-    frame.add_pulse(100., 0.15, 0.003, 100.)
-    frame.add_pulse(200., 0.15, 0.003, 200.)
-    frame.add_pulse(300., 0.15, 0.003, 300.)
-    frame.add_pulse(400., 0.15, 0.003, 500.)
-    frame.add_pulse(500., 0.15, 0.003, 700.)
+    frame.add_pulse(1., 0.1, 0.003, 100.)
+    frame.add_pulse(2., 0.09, 0.003, 200.)
+    frame.add_pulse(3., 0.08, 0.003, 300.)
+    frame.add_pulse(4., 0.07, 0.003, 500.)
+    frame.add_pulse(5., 0.06, 0.003, 700.)
     print "Adding noise"
     frame.add_noise(0.5)

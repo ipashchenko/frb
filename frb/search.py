@@ -6,6 +6,8 @@ from skimage.measure import regionprops
 from skimage.morphology import opening
 from candidates import Candidate
 from astropy.time import TimeDelta
+from astropy.modeling import models, fitting
+import matplotlib.pyplot as plt
 
 
 def find_peaks(array_like, n_std=4, med_width=31, gauss_width=2):
@@ -158,6 +160,56 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
     return image
 
 
+def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None):
+    """
+    Function that fits 2D ellipses to `t-DM` image.
+
+    :param prop:
+        ``skimage.measure._regionprops._RegionProperties`` instance
+
+    :return:
+        Instance of ``astropy.modelling.functional_models.Gaussian2D`` class
+        fitted to `t-DM` image in region of ``prop``.
+    """
+    data = prop.intensity_image.copy()
+    amp, x_0, y_0, width = infer_gaussian(data)
+    # Remove high-intensity background
+    try:
+        data -= np.unique(sorted(data.ravel()))[1]
+    except IndexError:
+        raise Exception("No intensity in region!")
+    data[data < 0] = 0
+    x_lims = [0, data.shape[0]]
+    y_lims = [0, data.shape[1]]
+    g = models.Gaussian2D(amplitude=amp, x_mean=x_0, y_mean=y_0,
+                          x_stddev=0.5 * width, y_stddev=0.5 * width,
+                          theta=0, bounds={'x_mean': x_lims, 'y_mean': y_lims})
+    fit_g = fitting.LevMarLSQFitter()
+    x, y = np.indices(data.shape)
+    gg = fit_g(g, x, y, data)
+
+    if plot:
+        fig, ax = plt.subplots(1, 1)
+        ax.hold(True)
+        im = ax.matshow(data, cmap=plt.cm.jet)
+        model = gg.evaluate(x, y, gg.amplitude, gg.x_mean, gg.y_mean,
+                            gg.x_stddev, gg.y_stddev, gg.theta)
+        ax.contour(y, x, model, colors='w')
+        ax.set_xlabel('t steps')
+        ax.set_ylabel('DM steps')
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="10%", pad=0.00)
+        cb = fig.colorbar(im, cax=cax)
+        if colorbar_label is not None:
+            cb.set_label(colorbar_label)
+        if save_file is not None:
+            fig.savefig(save_file, bbox_inches='tight', dpi=200)
+        fig.show()
+
+    return gg
+
+
 def circular_mean(data, radius):
     """
     :param data:
@@ -187,6 +239,24 @@ def circular_median(data, radius):
 
     kernel = disk(radius)
     return gf(data, np.median, footprint=kernel)
+
+
+def infer_gaussian(data):
+    """
+    Return (amplitude, x_0, y_0, width), where width - rough estimate of
+    gaussian width
+    """
+    amplitude = data.max()
+    x_0, y_0 = np.unravel_index(np.argmax(data), np.shape(data))
+    row = data[x_0, :]
+    column = data[:, y_0]
+    x_0 = float(x_0)
+    y_0 = float(y_0)
+    dx = len(np.where(row - amplitude/2 > 0)[0])
+    dy = len(np.where(column - amplitude/2 > 0)[0])
+    width = np.sqrt(dx ** 2. + dy ** 2.)
+
+    return amplitude, x_0, y_0, width
 
 
 def get_props(image, threshold):

@@ -163,3 +163,28 @@ def to_shared_array(array):
     shared_array =  np.ctypeslib.as_array(shared_array_base.get_obj()).reshape((i, j))
     shared_array += array.copy()
     return shared_array
+
+
+def delta_dm_max(nu_max, nu_min, dt):
+    """
+    Return difference in DM that corresponds to arrival time shift between
+    highest and lowest frequency channels equals to time resolution.
+
+    :param nu_max:
+        Frequency of highest frequency channel [MHz].
+    :param nu_min:
+        Frequency of lowest frequency channel [MHz].
+    :param dt:
+        Time interval between measurements [s].
+    :return:
+        Maximum difference of DM that we should use for FRB grid search.
+
+    >>> delta_dm_max(1600., 1600. - 16., 3. / 1000)
+    1.8147253416989504
+
+    """
+    # MHz ** 2 * cm ** 3 * s / pc
+    k = 1. / (2.410331 * 10 ** (-4))
+    return dt / (k * (1. / (nu_min) ** 2.) - 1. / nu_max ** 2.)
+
+

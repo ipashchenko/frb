@@ -3,7 +3,7 @@ import numpy as np
 from scipy.ndimage.measurements import maximum_position, label, find_objects
 from scipy.ndimage.morphology import generate_binary_structure
 from skimage.measure import regionprops
-from skimage.morphology import dilation
+from skimage.morphology import opening
 from candidates import Candidate
 from astropy.time import TimeDelta
 
@@ -126,7 +126,7 @@ def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
 # can scale original, use ``median`` and then scale back - it is much faster
 # then mine
 def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
-                    statistic='mean', dilation_selem=np.ones((3, 3))):
+                    statistic='mean', opening_selem=np.ones((4, 4))):
     """
     Function that pre-process de-dispersed plane `t-DM` by creating
     characteristic inclined ellipses in places where FRB is sitting.
@@ -136,14 +136,14 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
     :param disk_size: (optional)
         Disk size to use when calculating filtered values. (default: ``5``)
     :param threshold_perc: (optional)
-        Threshold [0 - 100] to threshold image after filtering. (default:
+        Threshold [0. - 100.] to threshold image after filtering. (default:
         ``99.5``)
     :param statistic: (optional)
         Statistic to use when filtering (``mean``, ``median`` or ``gauss``).
         (default: ``mean``)
-    :param dilation_selem: (optional)
-        The neighborhood expressed as a 2-D array of 1’s and 0’s for dilation
-        step. (default: ``np.ones((3, 3))``)
+    :param opening_selem: (optional)
+        The neighborhood expressed as a 2-D array of 1’s and 0’s for opening
+        step. (default: ``np.ones((4, 4))``)
 
     :return:
         2D numpy.ndarray of thresholded image of `t - DM` plane.
@@ -154,7 +154,7 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
     image = statistic_dict[statistic](image, disk_size)
     threshold = np.percentile(image.ravel(), threshold_perc)
     image[image < threshold] = 0
-    image = dilation(image, dilation_selem)
+    image = opening(image, opening_selem)
     return image
 
 

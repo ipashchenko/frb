@@ -124,11 +124,40 @@ def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
     return candidates
 
 
+def search_candidates_ell(image, x_stddev, y_to_x_stddev, theta_lims, t_0, d_t,
+                          d_dm):
+    a = image.copy()
+    s = generate_binary_structure(2, 2)
+    # Label image
+    labeled_array, num_features = label(a, structure=s)
+    # Find objects
+    props = regionprops(labeled_array, intensity_image=image)
+    candidates = list()
+    for i, prop in enumerate(props):
+        try:
+            gg = fit_elliplse(prop, plot=True, show=True, close=True,
+                              save_file="search_ell_{}.png".format(i))
+        # TODO: Subclass Exception for this case
+        except:
+            print "2D gaussian fitting failed!"
+            continue
+        if ((abs(gg.x_stddev) > abs(x_stddev)) and
+                (abs(gg.y_stddev / gg.x_stddev) < y_to_x_stddev) and
+                (theta_lims[0] < np.rad2deg(gg.theta) % 180 < theta_lims[1])):
+            max_pos = (gg.x_mean + prop.bbox[0], gg.y_mean + prop.bbox[1])
+            candidate = Candidate(t_0 + max_pos[1] * TimeDelta(d_t,
+                                                               format='sec'),
+                                  max_pos[0] * float(d_dm))
+            candidates.append(candidate)
+
+    return candidates
+
+
 # FIXME: ``skimage.filters.median`` use float images with ranges ``[-1, 1]``. I
 # can scale original, use ``median`` and then scale back - it is much faster
 # then mine
 def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
-                    statistic='mean', opening_selem=np.ones((4, 4))):
+                    statistic='mean', opening_selem=np.ones((3, 3))):
     """
     Function that pre-process de-dispersed plane `t-DM` by creating
     characteristic inclined ellipses in places where FRB is sitting.
@@ -160,7 +189,8 @@ def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
     return image
 
 
-def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None):
+def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None,
+                 close=False, show=True):
     """
     Function that fits 2D ellipses to `t-DM` image.
 
@@ -172,13 +202,13 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None):
         fitted to `t-DM` image in region of ``prop``.
     """
     data = prop.intensity_image.copy()
-    amp, x_0, y_0, width = infer_gaussian(data)
     # Remove high-intensity background
     try:
         data -= np.unique(sorted(data.ravel()))[1]
     except IndexError:
         raise Exception("No intensity in region!")
     data[data < 0] = 0
+    amp, x_0, y_0, width = infer_gaussian(data)
     x_lims = [0, data.shape[0]]
     y_lims = [0, data.shape[1]]
     g = models.Gaussian2D(amplitude=amp, x_mean=x_0, y_mean=y_0,
@@ -187,6 +217,9 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None):
     fit_g = fitting.LevMarLSQFitter()
     x, y = np.indices(data.shape)
     gg = fit_g(g, x, y, data)
+    print gg.x_stddev, gg.y_stddev
+    print abs(gg.x_stddev), abs(gg.y_stddev / gg.x_stddev),\
+        np.rad2deg(gg.theta) % 180
 
     if plot:
         fig, ax = plt.subplots(1, 1)
@@ -205,7 +238,10 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None):
             cb.set_label(colorbar_label)
         if save_file is not None:
             fig.savefig(save_file, bbox_inches='tight', dpi=200)
-        fig.show()
+        if show:
+            fig.show()
+        if close:
+            plt.close()
 
     return gg
 

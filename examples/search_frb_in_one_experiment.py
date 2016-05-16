@@ -8,7 +8,7 @@ from frb.queries import query_frb, connect_to_db
 
 
 # Set random generator seed for reproducibility
-np.random.seed(123)
+np.random.seed(1)
 
 # Real data from WB
 txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
@@ -24,10 +24,10 @@ t = Time.now()
 print "Zero time: {}".format(t)
 n_real = 5
 # Time of `real` FRB
-t_0_reals = np.random.uniform(1, 20, size=n_real)
-amp_reals = np.random.uniform(0.45, 0.50, size=n_real)
-width_reals = np.random.uniform(0.001, 0.005, size=n_real)
-dm_value_reals = np.random.uniform(0, 1000, size=n_real)
+t_0_reals = np.linspace(0, 30, n_real+2)[1:-1]
+amp_reals = np.random.uniform(0.25, 0.35, size=n_real)
+width_reals = np.random.uniform(0.001, 0.003, size=n_real)
+dm_value_reals = np.random.uniform(100, 500, size=n_real)
 
 for t_0_real, amp_real, width_real, dm_value_real in zip(t_0_reals, amp_reals,
                                                          width_reals,
@@ -58,12 +58,12 @@ for antenna, ant_slice in zip(antennas, slices):
                               search_func=search_candidates_ell,
                               preprocess_func=create_ellipses,
                               de_disp_args=[dm_grid],
-                              search_kwargs={'x_stddev': 10.,
+                              search_kwargs={'x_stddev': 6.,
                                              'y_to_x_stddev': 0.3,
                                              'theta_lims': [130., 180.],
-                                             'x_cos_theta': 5.,
+                                             'x_cos_theta': 3.,
                                              'd_dm': d_dm,
-                                             'amplitude': 10},
+                                             'amplitude': 3},
                               preprocess_kwargs={'disk_size': 3,
                                                  'threshold_big_perc': 90.,
                                                  'threshold_perc': 97.5,

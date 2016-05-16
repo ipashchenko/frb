@@ -37,7 +37,7 @@ class Searcher(object):
         self.d_t = d_t
         self.nu_max = meta_data.get('nu_max')
 
-        self.meta_data = meta_data
+        self.meta_data = meta_data.copy()
         self.meta_data.update({'t_end': self.t_end.utc.datetime,
                                't_0': self.t_0.utc.datetime})
 
@@ -97,7 +97,7 @@ class Searcher(object):
             if result is not None:
                 print "Found cached preprocessed data..."
             else:
-                result = preprocess_func(self._de_dispersed_data, *args,
+                result = preprocess_func(self._de_dispersed_data.copy(), *args,
                                          **kwargs)
                 self._preprocessed_cache[key] = result
 
@@ -111,7 +111,8 @@ class Searcher(object):
             List of ``Candidate`` instances.
         """
         kwargs.update({'t_0': self.t_0, 'd_t': self.d_t})
-        candidates = search_func(self._pre_processed_data, *args, **kwargs)
+        candidates = search_func(self._pre_processed_data.copy(), *args,
+                                 **kwargs)
 
         return candidates
 

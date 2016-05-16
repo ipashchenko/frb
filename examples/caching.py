@@ -1,6 +1,6 @@
 import numpy as np
 from astropy.time import Time
-from frb.frames import Frame
+from frb.frames import create_from_txt
 from frb.search_candidates import Searcher
 from frb.dedispersion import de_disperse_cumsum
 from frb.search import (search_candidates, search_candidates_ell,
@@ -8,7 +8,9 @@ from frb.search import (search_candidates, search_candidates_ell,
 
 
 print "Creating Dynamical Spectra"
-frame = Frame(256, 10000, 1684., 0., 16./256, 1./1000)
+# frame = Frame(256, 10000, 1684., 0., 16./256, 1./1000)
+txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
+frame = create_from_txt(txt, 1684., 0, 16./128, 0.001)
 t0 = Time.now()
 print "Start time {}".format(t0)
 # Number of artificially injected pulses
@@ -20,17 +22,15 @@ print "Adding {} pulses".format(n_pulses)
 # Set random generator seed for reproducibility
 np.random.seed(123)
 # Generate values of pulse parameters
-amps = np.random.uniform(0.05, 0.1, size=n_pulses)
+amps = np.random.uniform(0.1, 0.15, size=n_pulses)
 widths = np.random.uniform(0.001, 0.005, size=n_pulses)
 dm_values = np.random.uniform(0, 1000, size=n_pulses)
-times = np.linspace(0.1, 9.9, n_pulses)
+times = np.linspace(0.1, frame.shape[0] - 0.1, n_pulses)
 # Injecting pulses
 for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
     frame.add_pulse(t_0, amp, width, dm)
     print "Adding pulse with t0={}, amp={}, width={}, dm={}".format(t_0, amp,
                                                                     width, dm)
-print "Adding noise"
-frame.add_noise(0.5)
 
 meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
              'exp_code': 'raks00', 'nu_max': 1684., 't_0': t0, 'd_nu': 16./256.,
@@ -49,9 +49,10 @@ candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                           search_kwargs={'n_d_x': 4., 'n_d_y': 10.,
                                          'd_dm': d_dm},
                           preprocess_kwargs={'disk_size': 3,
-                                             'threshold_perc': 97.5,
+                                             'threshold_big_perc': 97.5,
+                                             'threshold_perc': 98.5,
                                              'statistic': 'mean'})
-print "Found {} pulses".format(len(candidates))
+print "Found {} candidates".format(len(candidates))
 for candidate in candidates:
     print candidate
 
@@ -62,13 +63,16 @@ candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                           search_func=search_candidates_ell,
                           preprocess_func=create_ellipses,
                           de_disp_args=[dm_grid],
-                          search_kwargs={'x_stddev': 4., 'y_to_x_stddev': 0.4,
+                          search_kwargs={'x_stddev': 10., 'y_to_x_stddev': 0.3,
                                          'theta_lims': [130., 180.],
-                                         'd_dm': d_dm},
+                                         'x_cos_theta': 5.,
+                                         'd_dm': d_dm,
+                                         'amplitude': 5.},
                           preprocess_kwargs={'disk_size': 3,
-                                             'threshold_perc': 97.5,
+                                             'threshold_big_perc': 97.5,
+                                             'threshold_perc': 98.5,
                                              'statistic': 'mean'})
-print "Found {} pulses".format(len(candidates))
+print "Found {} candidates".format(len(candidates))
 for candidate in candidates:
     print candidate
 

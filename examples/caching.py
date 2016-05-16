@@ -16,15 +16,15 @@ print "Start time {}".format(t0)
 # Number of artificially injected pulses
 n_pulses = 30
 # Step of de-dispersion
-d_dm = 25.
+d_dm = 30.
 print "Adding {} pulses".format(n_pulses)
 
 # Set random generator seed for reproducibility
 np.random.seed(123)
 # Generate values of pulse parameters
-amps = np.random.uniform(0.1, 0.15, size=n_pulses)
-widths = np.random.uniform(0.001, 0.005, size=n_pulses)
-dm_values = np.random.uniform(0, 1000, size=n_pulses)
+amps = np.random.uniform(0.25, 0.35, size=n_pulses)
+widths = np.random.uniform(0.001, 0.003, size=n_pulses)
+dm_values = np.random.uniform(100, 500, size=n_pulses)
 times = np.linspace(0.1, frame.shape[0] - 0.1, n_pulses)
 # Injecting pulses
 for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
@@ -33,7 +33,7 @@ for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
                                                                     width, dm)
 
 meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
-             'exp_code': 'raks00', 'nu_max': 1684., 't_0': t0, 'd_nu': 16./256.,
+             'exp_code': 'raks00', 'nu_max': 1684., 't_0': t0, 'd_nu': 16./128.,
              'd_t': 0.001}
 # Values of DM to de-disperse
 dm_grid = np.arange(0., 1000., d_dm)
@@ -46,7 +46,7 @@ candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                           search_func=search_candidates,
                           preprocess_func=create_ellipses,
                           de_disp_args=[dm_grid],
-                          search_kwargs={'n_d_x': 4., 'n_d_y': 10.,
+                          search_kwargs={'n_d_x': 4., 'n_d_y': 15.,
                                          'd_dm': d_dm},
                           preprocess_kwargs={'disk_size': 3,
                                              'threshold_big_perc': 97.5,
@@ -63,11 +63,11 @@ candidates = searcher.run(de_disp_func=de_disperse_cumsum,
                           search_func=search_candidates_ell,
                           preprocess_func=create_ellipses,
                           de_disp_args=[dm_grid],
-                          search_kwargs={'x_stddev': 10., 'y_to_x_stddev': 0.3,
+                          search_kwargs={'x_stddev': 6., 'y_to_x_stddev': 0.3,
                                          'theta_lims': [130., 180.],
-                                         'x_cos_theta': 5.,
+                                         'x_cos_theta': 3.,
                                          'd_dm': d_dm,
-                                         'amplitude': 5.},
+                                         'amplitude': 3.},
                           preprocess_kwargs={'disk_size': 3,
                                              'threshold_big_perc': 97.5,
                                              'threshold_perc': 98.5,

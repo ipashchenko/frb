@@ -20,7 +20,11 @@ class PulseClassifier(object):
         self._clf_args = args
         self._clf_kwargs = kwargs
 
-    def create_train_sample(self):
+    # TODO: I need classifyer for different DM ranges. Specify it in arguments.
+    def create_train_sample(self, *args, **kwargs):
+        pass
+
+    def create_test_sample(self):
         pass
 
     def train(self):

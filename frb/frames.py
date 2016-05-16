@@ -2,13 +2,8 @@ import multiprocessing
 import ctypes
 import numpy as np
 import pickle_method
-from utils import vint, vround, delta_dm_max
+from utils import vint, vround
 
-try:
-    import george
-    from george import kernels
-except ImportError:
-    george = None
 try:
     import matplotlib.pyplot as plt
 except ImportError:
@@ -27,7 +22,7 @@ class Frame(object):
     :param nu_0:
         Frequency of highest frequency channel [MHz].
     :param t_0:
-        Time of first measurement.
+        Time of first measurement. Instance of ``astropy.time.Time`` class.
     :param dnu:
         Width of spectral channel [MHz].
     :param dt:
@@ -68,17 +63,12 @@ class Frame(object):
         """
         raise NotImplementedError
 
-    # FIXME: at small ``dt`` it uses too small DM-step for my laptop RAM:)
-    def de_disperse(self, dm, replace=False):
+    def _de_disperse_by_value(self, dm):
         """
         De-disperse frame using specified value of DM.
 
         :param dm:
             Dispersion measure to use in de-dispersion [cm^3 / pc].
-        :param replace: (optional)
-            Replace instance's frame values with de-dispersed ones? (default:
-            ``False``)
-
         """
         # MHz ** 2 * cm ** 3 * s / pc
         k = 1. / (2.410331 * 10 ** (-4))
@@ -93,19 +83,16 @@ class Frame(object):
             values.append(np.roll(self.values[i], -nt_all[i]))
         values = np.vstack(values)
 
-        if replace:
-            self.values = values[:, :]
         return values
 
-    # FIXME: at small ``dt`` it uses too small DM-step for my laptop RAM:)
-    def _de_disperse_freq_average(self, dm):
+    def _de_disperse_by_value_freq_average(self, dm):
         """
         De-disperse frame using specified value of DM and average in frequency.
 
         :param dm:
             Dispersion measure to use in de-dispersion [cm^3 / pc].
 
-        :notes:
+        :note:
             This method avoids creating ``(n_nu, n_t)`` arrays and must be
             faster for data with big sizes. But it returns already frequency
             averaged de-dispersed dyn. spectra.
@@ -125,50 +112,6 @@ class Frame(object):
             values += np.roll(self.values[i], -nt_all[i])
 
         return values / self.n_nu
-
-    def average_in_time(self, values=None, plot=False):
-        """
-        Average frame in time.
-
-        :param values: ``(n_nu, n_t)`` (optional)
-            Numpy array of Frame values to average. If ``None`` then use current
-            instance's values. (default: ``None``)
-        :param plot: (optional)
-            Plot figure? If ``False`` then only return array. (default:
-            ``False``)
-
-        :return:
-            Numpy array with length equals the number of frequency channels.
-        """
-        if values is None:
-            values = self.values
-        result = np.mean(values, axis=1)
-        if plt is not None and plot:
-            plt.plot(np.arange(self.n_nu), result, '.k')
-            plt.xlabel("frequency channel #")
-        return result
-
-    def average_in_freq(self, values=None, plot=False):
-        """
-        Average frame in frequency.
-
-        :param values: ``(n_t, n_nu)`` (optional)
-            Numpy array of Frame values to average. If ``None`` then use current
-            instance's values. (default: ``None``)
-        :param plot: (optional)
-            Plot figure? If ``False`` then only return array. (default:
-            ``False``)
-
-        :return:
-            Numpy array with length equals number of time steps.
-        """
-        if values is None:
-            values = self.values
-        result = np.mean(values, axis=0)
-        if plt is not None and plot:
-            plt.plot(np.arange(self.n_t), result, '.k')
-            plt.xlabel("time steps")
-        return result
 
     # TODO: if one choose what channels to plot - use ``extent`` kwarg.
     def plot(self, plot_indexes=True, savefig=None):
@@ -240,51 +183,19 @@ class Frame(object):
     def save_to_txt(self, fname):
         np.savetxt(fname, self.values.T)
 
-    def add_noise(self, std, kamp=None, kscale=None, kmean=0.0):
+    def add_noise(self, std):
         """
-        Add noise to frame using specified gaussian process or simple
-        rayleigh-distributed noise.
-
-        Correlated noise is correlated along the frequency axis.
+        Add noise to frame using specified rayleigh-distributed noise.
 
         :param std:
             Std of rayleigh-distributed uncorrelated noise.
-        :param kamp: (optional)
-            Amplitude of GP kernel. If ``None`` then don't add correlated noise.
-            (default: ``None``)
-        :param kscale:
-            Scale of GP kernel [MHz]. If ``None`` then don't add correlated
-            noise.  (default: ``None``)
-        :param kmean: (optional)
-            Mean of GP kernel. (default: ``0.0``)
-
         """
         noise = np.random.rayleigh(std,
                                    size=(self.n_t *
                                          self.n_nu)).reshape(np.shape(self.values))
         self.values += noise
-        if kscale is not None and kamp is not None:
-            if not george:
-                raise Exception("Install george for correlated noise option.")
-            gp1 = george.GP(kamp * kernels.ExpSquaredKernel(kscale))
-            gp2 = george.GP(kamp * kernels.ExpSquaredKernel(kscale))
-            for i in xrange(self.n_t):
-                gp_samples = np.sqrt(gp1.sample(self.nu) ** 2. +
-                                     gp2.sample(self.nu) ** 2.)
-                self.values[:, i] += gp_samples
 
-    def _step_dedisperse(self, dm):
-
-        """
-        Method that de-disperses frame using specified value of DM and frequency
-        averages the result.
-
-        :param dm:
-        :return:
-        """
-        values = self.de_disperse(dm)
-        return self.average_in_freq(values)
-
+    # TODO: Check optimal value of ``dm_delta``
     def create_dm_grid(self, dm_min, dm_max, dm_delta=None):
         """
         Method that create DM-grid for current frame.
@@ -300,18 +211,9 @@ class Frame(object):
         :return:
             Numpy array of DM values [cm^3 / pc]
         """
-        if dm_delta is None:
-            nu_max = self.nu_0
-            # Note ``-1``
-            nu_min = self.nu_0 - (self.n_nu - 1) * self.dnu
-            # Find step for DM grid
-            # Seems that ``5`` is good choice (1/200 of DM range)
-            dm_delta = 5 * delta_dm_max(nu_max, nu_min, self.dt)
+        raise NotImplementedError
 
-        # Create grid of searched DM-values
-        return np.arange(dm_min, dm_max, dm_delta)
-
-    def grid_dedisperse(self, dm_grid, savefig=None, threads=1):
+    def grid_dedisperse(self, dm_grid, threads=1):
         """
         Method that de-disperse ``Frame`` instance with range values of
         dispersion measures and average them in frequency to obtain image in
@@ -319,8 +221,6 @@ class Frame(object):
 
         :param dm_grid:
             Array-like of value of DM on which to de-disperse [cm^3/pc].
-        :param savefig: (optional)
-            File to save picture.
         :param threads: (optional)
             Number of threads used for parallelization with ``multiprocessing``
             module. If > 1 then it isn't used. (default: 1)
@@ -336,7 +236,8 @@ class Frame(object):
             m = map
 
         # Accumulator of de-dispersed frequency averaged frames
-        frames = list(m(self._de_disperse_freq_average, dm_grid.tolist()))
+        frames = list(m(self._de_disperse_by_value_freq_average,
+                        dm_grid.tolist()))
         frames = np.array(frames)
 
         if pool:
@@ -344,74 +245,58 @@ class Frame(object):
             pool.close()
             pool.join()
 
-        # Plot results
-        if savefig is not None:
-            plt.imshow(frames, interpolation='none', aspect='auto')
-            plt.xlabel('De-dispersed by DM freq.averaged dyn.spectr')
-            plt.ylabel('DM correction')
-            plt.yticks(np.linspace(0, len(dm_grid) - 10, 5, dtype=int),
-                       vint(dm_grid[np.linspace(0, len(dm_grid) - 10, 5,
-                                                dtype=int)]))
-            plt.colorbar()
-            plt.savefig(savefig, bbox_inches='tight')
-            plt.show()
-            plt.close()
-
         return frames
 
 
-# TODO: should i use just one class ``Frame`` but different io-methods?
-# TODO: Create subclass for FITS input.
-class DataFrame(Frame):
+class DynSpectra(Frame):
+    def __init__(self, n_nu, n_t, nu_0, t_0, dnu, dt, meta_data=None):
+        super(DynSpectra, self).__init__(n_nu, n_t, nu_0, t_0, dnu, dt)
+        self.meta_data = meta_data
+        self.exp_code = meta_data['exp_code']
+        self.antenna = meta_data['antenna']
+        self.time = meta_data['time']
+        self.freq = meta_data['freq']
+        self.band = meta_data['band']
+        self.pol = meta_data['pol']
+
+
+def create_from_txt(fname, nu_0, t_0, dnu, dt, n_nu_discard=0):
     """
-    Class that represents the frame of real data.
+    Function that creates instance of ``Frame`` class from text file.
 
     :param fname:
         Name of txt-file with rows representing frequency channels and columns -
         1d-time series of data for each frequency channel.
 
+    :return:
+        Instance of ``Frame`` class.
     """
-    def __init__(self, fname, nu_0, t_0, dnu, dt, n_nu_discard=0):
-        # Assert even number of channels to discard
-        assert not int(n_nu_discard) % 2
+    assert not int(n_nu_discard) % 2
 
-        try:
-            values = np.load(fname).T
-        except IOError:
-            values = np.loadtxt(fname, unpack=True)
-        n_nu, n_t = np.shape(values)
-        super(DataFrame, self).__init__(n_nu - n_nu_discard, n_t,
-                                        nu_0 - n_nu_discard * dnu / 2., t_0,
-                                        dnu, dt)
-        if n_nu_discard:
-            self.values += values[n_nu_discard / 2 : -n_nu_discard / 2, :]
-        else:
-            self.values += values
+    try:
+        values = np.load(fname).T
+    except IOError:
+        values = np.loadtxt(fname, unpack=True)
+    n_nu, n_t = np.shape(values)
+    frame = Frame(n_nu - n_nu_discard, n_t,
+                  nu_0 - n_nu_discard * dnu / 2., t_0,
+                  dnu, dt)
+    if n_nu_discard:
+        frame.values += values[n_nu_discard / 2 : -n_nu_discard / 2, :]
+    else:
+        frame.values += values
+
+    return frame
 
 
 if __name__ == '__main__':
-    import time
     print "Creating frame"
-    frame = Frame(256, 1200000, 1684., 0., 16./256, 1./1000)
+    frame = Frame(256, 12000, 1684., 0., 16./256, 1./1000)
     print "Adding pulse"
-    frame.add_pulse(100., 0.15, 0.003, 100.)
-    frame.add_pulse(200., 0.15, 0.003, 200.)
-    frame.add_pulse(300., 0.15, 0.003, 300.)
-    frame.add_pulse(400., 0.15, 0.003, 500.)
-    frame.add_pulse(500., 0.15, 0.003, 700.)
+    frame.add_pulse(1., 0.1, 0.003, 100.)
+    frame.add_pulse(2., 0.09, 0.003, 200.)
+    frame.add_pulse(3., 0.08, 0.003, 300.)
+    frame.add_pulse(4., 0.07, 0.003, 500.)
+    frame.add_pulse(5., 0.06, 0.003, 700.)
     print "Adding noise"
     frame.add_noise(0.5)
-    dm_values = frame.create_dm_grid(0., 1500., 50)
-    from dedispersion import de_disperse
-    t0 = time.time()
-    result = de_disperse(frame.values, 1684., 16./256, 1./1000, dm_values)
-    t1 = time.time()
-    print "Dedispersion took", t1 - t0
-    a = frame.values
-    from objects import BatchedTDMIO
-    btdmi = BatchedTDMIO(result, frame.t, dm_values, 99.85, d_dm=350, dt=0.003)
-    t0 = time.time()
-    xy = btdmi.run(batch_size=100000)
-    t1 = time.time()
-    print xy
-    print "Search of pulses took", t1 - t0

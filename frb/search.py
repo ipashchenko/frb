@@ -82,6 +82,8 @@ def search_candidates_clf(dsp, frb_clf=None, training_frac=0.01):
 
 
 # TODO: All search functions must returns instances of ``Candidate`` class
+# FIXME: It uses processed image for searching maximum position. Should it be
+# the option to use original image (more variance - less bias)
 def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
 
     a = image.copy()

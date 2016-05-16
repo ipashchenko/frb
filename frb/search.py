@@ -10,6 +10,10 @@ from astropy.modeling import models, fitting
 import matplotlib.pyplot as plt
 
 
+class NoIntensityRegionException(Exception):
+    pass
+
+
 def find_peaks(array_like, n_std=4, med_width=31, gauss_width=2):
     """
     Find peaks in 1D array.
@@ -126,8 +130,8 @@ def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
     return candidates
 
 
-def search_candidates_ell(image, x_stddev, y_to_x_stddev, theta_lims, t_0, d_t,
-                          d_dm):
+def search_candidates_ell(image, amplitude, x_stddev, x_cos_theta,
+                          y_to_x_stddev, theta_lims, t_0, d_t, d_dm):
     a = image.copy()
     s = generate_binary_structure(2, 2)
     # Label image
@@ -137,15 +141,17 @@ def search_candidates_ell(image, x_stddev, y_to_x_stddev, theta_lims, t_0, d_t,
     candidates = list()
     for i, prop in enumerate(props):
         try:
-            gg = fit_elliplse(prop, plot=True, show=True, close=True,
-                              save_file="search_ell_{}.png".format(i))
-        # TODO: Subclass Exception for this case
-        except:
-            print "2D gaussian fitting failed!"
+            gg = fit_elliplse(prop, plot=False)
+        except NoIntensityRegionException:
             continue
+        # TODO: Subclass Exception for this case
         if ((abs(gg.x_stddev) > abs(x_stddev)) and
+                (abs(gg.x_stddev * np.cos(gg.theta)) > x_cos_theta) and
                 (abs(gg.y_stddev / gg.x_stddev) < y_to_x_stddev) and
+                (gg.amplitude > amplitude) and
                 (theta_lims[0] < np.rad2deg(gg.theta) % 180 < theta_lims[1])):
+            gg = fit_elliplse(prop, plot=True, show=False, close=True,
+                              save_file="search_ell_{}.png".format(i))
             max_pos = (gg.x_mean + prop.bbox[0], gg.y_mean + prop.bbox[1])
             candidate = Candidate(t_0 + max_pos[1] * TimeDelta(d_t,
                                                                format='sec'),
@@ -155,39 +161,106 @@ def search_candidates_ell(image, x_stddev, y_to_x_stddev, theta_lims, t_0, d_t,
     return candidates
 
 
+# FIXME: Add features
+def get_ellipse_features_for_classification(image):
+    """
+    Get features of ``skimage.measure._regionprops._RegionProperties`` objects.
+
+    :param image:
+        2D of de-dispersed and pre-processed dynamical spectra.
+    :return:
+        List of features of ``skimage.measure._regionprops._RegionProperties``
+        objects.
+    """
+    a = image.copy()
+    s = generate_binary_structure(2, 2)
+    # Label image
+    labeled_array, num_features = label(a, structure=s)
+    # Find objects
+    props = regionprops(labeled_array, intensity_image=image)
+    features = dict()
+    for prop in props:
+        try:
+            gg = fit_elliplse(prop, plot=False, close=True)
+        except NoIntensityRegionException:
+            continue
+        # TODO: Subclass Exception for this case
+        features[prop] = [prop.area, gg.amplitude.value, abs(gg.x_stddev.value),
+                          abs(gg.y_stddev.value), abs(gg.theta.value),
+                          abs(gg.x_stddev.value/gg.y_stddev.value),
+                          prop.extent, abs(gg.amplitude/prop.mean_intensity),
+                          prop.solidity]
+
+    return features
+
+
 # FIXME: ``skimage.filters.median`` use float images with ranges ``[-1, 1]``. I
 # can scale original, use ``median`` and then scale back - it is much faster
 # then mine
-def create_ellipses(tdm_image, disk_size=5, threshold_perc=99.5,
-                    statistic='mean', opening_selem=np.ones((3, 3))):
+def create_ellipses(tdm_image, disk_size=3, threshold_big_perc=97.5,
+                    threshold_perc=None, statistic='mean',
+                    opening_selem=np.ones((3, 3)), max_prop_size=25000):
     """
-    Function that pre-process de-dispersed plane `t-DM` by creating
-    characteristic inclined ellipses in places where FRB is sitting.
+    Function that pre-process de-dispersed plane `t-DM` by filtering out BIG
+    regions of high intensity and subsequent filtering, noise cleaning by
+    opening and thresholding.
 
     :param tdm_image:
         2D numpy.ndarray  of `t-DM` plane.
     :param disk_size: (optional)
-        Disk size to use when calculating filtered values. (default: ``5``)
+        Disk size to use when calculating filtered values. (default: ``3``)
+    :param threshold_big_perc: (optional)
+        Threshold [0. - 100.] to threshold image after filtering to find BIG
+        regions that would be filtered out. (default: ``97.5``)
     :param threshold_perc: (optional)
-        Threshold [0. - 100.] to threshold image after filtering. (default:
-        ``99.5``)
+        Threshold [0. - 100.] to threshold image after filtering BIG big regions
+        out. (default: ``97.5``)
     :param statistic: (optional)
         Statistic to use when filtering (``mean``, ``median`` or ``gauss``).
         (default: ``mean``)
     :param opening_selem: (optional)
         The neighborhood expressed as a 2-D array of 1’s and 0’s for opening
         step. (default: ``np.ones((4, 4))``)
+    :param max_prop_size: (optional)
+        Maximum size of region to be filtered out from ``tdm_array``. (default:
+        ``25000``)
 
     :return:
         2D numpy.ndarray of thresholded image of `t - DM` plane.
     """
     statistic_dict = {'mean': circular_mean, 'median': circular_median,
                       'gauss': gaussian_filter}
-    image = tdm_image.copy()
-    image = statistic_dict[statistic](image, disk_size)
+
+    if threshold_big_perc is not None:
+        image = tdm_image.copy()
+        image = statistic_dict[statistic](image, disk_size)
+        threshold = np.percentile(image.ravel(), threshold_big_perc)
+        image[image < threshold] = 0
+        image = opening(image, opening_selem)
+
+        # FInd BIG regions & exclude them in original ``tdm_image``. Then redo
+        a = image.copy()
+        s = generate_binary_structure(2, 2)
+        # Label image
+        labeled_array, num_features = label(a, structure=s)
+        # Find objects
+        props = regionprops(labeled_array, intensity_image=image)
+        big_sized_props = list()
+        for prop in props:
+            if prop.area > max_prop_size:
+                big_sized_props.append(prop)
+        for prop in big_sized_props:
+            bb = prop.bbox
+            print "Filtering out region {} with area {}".format(bb, prop.area)
+            tdm_image[bb[0]:bb[2], bb[1]:bb[3]] = np.mean(tdm_image)
+
+    image = statistic_dict[statistic](tdm_image, disk_size)
+    if threshold_perc is None:
+        threshold_perc = threshold_big_perc
     threshold = np.percentile(image.ravel(), threshold_perc)
     image[image < threshold] = 0
     image = opening(image, opening_selem)
+
     return image
 
 
@@ -208,7 +281,7 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None,
     try:
         data -= np.unique(sorted(data.ravel()))[1]
     except IndexError:
-        raise Exception("No intensity in region!")
+        raise NoIntensityRegionException("No intensity in region!")
     data[data < 0] = 0
     amp, x_0, y_0, width = infer_gaussian(data)
     x_lims = [0, data.shape[0]]
@@ -219,9 +292,9 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None,
     fit_g = fitting.LevMarLSQFitter()
     x, y = np.indices(data.shape)
     gg = fit_g(g, x, y, data)
-    print gg.x_stddev, gg.y_stddev
-    print abs(gg.x_stddev), abs(gg.y_stddev / gg.x_stddev),\
-        np.rad2deg(gg.theta) % 180
+    # print gg.x_stddev, gg.y_stddev
+    # print abs(gg.x_stddev), abs(gg.y_stddev / gg.x_stddev),\
+    #     np.rad2deg(gg.theta) % 180
 
     if plot:
         fig, ax = plt.subplots(1, 1)
@@ -229,7 +302,10 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None,
         im = ax.matshow(data, cmap=plt.cm.jet)
         model = gg.evaluate(x, y, gg.amplitude, gg.x_mean, gg.y_mean,
                             gg.x_stddev, gg.y_stddev, gg.theta)
-        ax.contour(y, x, model, colors='w')
+        try:
+            ax.contour(y, x, model, colors='w')
+        except ValueError:
+            print "Can't plot contours"
         ax.set_xlabel('t steps')
         ax.set_ylabel('DM steps')
         from mpl_toolkits.axes_grid1 import make_axes_locatable

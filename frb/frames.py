@@ -46,6 +46,13 @@ class Frame(object):
         self.dt = dt
         self.dnu = dnu
 
+    @property
+    def shape(self):
+        """
+        Length of time [s] and frequency [MHz] dimensions.
+        """
+        return self.n_t * self.dt, self.n_nu * self.dnu
+
     def add_values(self, array):
         """
         Add dyn. spectra in form of numpy array (#ch, #t,) to instance.
@@ -57,11 +64,23 @@ class Frame(object):
         assert self.values.shape == array.shape
         self.values += array
 
-    def slice(self, channels, times):
+    def slice(self, t_start, t_stop):
         """
-        Slice frame using specified channels and/or times.
+        Slice frame using specified fractions of time interval.
+
+        :param t_start:
+            Number [0, 1] - fraction of total time interval.
+        :param t_stop:
+            Number [0, 1] - fraction of total time interval.
+
+        :return:
+            Instance of ``Frame`` class.
         """
-        raise NotImplementedError
+        frame = Frame(self.n_nu, int(round(self.n_t * (t_stop - t_start))),
+                      self.nu_0, self.t_0, self.dnu, self.dt)
+        frame.add_values(self.values[:, int(t_start * self.n_t): int(t_stop *
+                                                                     self.n_t)])
+        return frame
 
     def _de_disperse_by_value(self, dm):
         """
@@ -300,3 +319,8 @@ if __name__ == '__main__':
     frame.add_pulse(5., 0.06, 0.003, 700.)
     print "Adding noise"
     frame.add_noise(0.5)
+    txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
+    frame = create_from_txt(txt, 1684., 0, 16./128, 0.001)
+    fr1 = frame.slice(0, 0.1)
+    fr2 = frame.slice(0.1, 0.9)
+    fr3 = frame.slice(0.9, 1)

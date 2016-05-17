@@ -170,12 +170,11 @@ class Searcher(object):
 
         # Save to DB metadata of dsp
         algo = 'de_disp_{}_{}_{} pre_process_{}_{}_{}' \
-               ' search_{}_{}_{}'.format(de_disp_func.__name__, de_disp_args,
+               ' search_{}_{}'.format(de_disp_func.__name__, de_disp_args,
                                          de_disp_kwargs,
                                          preprocess_func.__name__,
                                          preprocess_args, preprocess_kwargs,
-                                         search_func.__name__, search_args,
-                                         search_kwargs)
+                                         search_func.__name__, search_kwargs)
         searched_data = SearchedData(algo=algo, **self.meta_data)
         searched_data.candidates = candidates
         # Saving searched meta-data and found candidates to DB

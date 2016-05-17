@@ -63,25 +63,40 @@ def max_pos(object, image):
 
 
 # TODO: All search functions must returns instances of ``Candidate`` class
-def search_candidates_clf(dsp, frb_clf=None, training_frac=0.01):
+def search_candidates_clf(image, pclf, t_0, d_t, d_dm, save_fig=False):
     """
-    Search FRB using ML.
-    :param dsp:
-        Dynamical spectra.
-    :param frb_clf: (optional)
-        Instance of ``PulseClassifier``. If ``None`` then initialize one and
-        train usign data supplied. (default: ``None``)
-    :param training_frac: (optional)
-        Fraction of time interval of dynamical spectra used for training
-        classifier. (default: ``0.01``)
+    Search FRB in de-dispersed and pre-processed dynamical spectra using
+    instance of trained ``PulseClassifier`` instance.
+
+    :param image:
+        2D numpy.ndarray of de-dispersed and pre-processed dynamical
+        spectra.
+    :param pclf:
+        Instance of ``PulseClassifier``.
+
     :return:
+        List of ``Candidate`` instances.
     """
-    from classification import PulseClassifier
-    if frb_clf is None:
-        frb_clf = PulseClassifier()
-        frb_clf.create_train_sample(dsp, frac=training_frac)
-        frb_clf.train()
-    candidates = frb_clf.classify(dsp)
+    out_features_dict, out_responses_dict = pclf.classify_data(image)
+
+    # Select only positively classified regions
+    positive_props = list()
+    for i, (prop, response) in enumerate(out_responses_dict.items()):
+        if response:
+            positive_props.append([i, prop])
+    candidates = list()
+    # Fit them with ellipse and create ``Candidate`` instances
+    for i, prop in positive_props:
+        try:
+            gg = fit_elliplse(prop, plot=save_fig, show=False, close=True,
+                              save_file="search_clf_{}.png".format(i))
+        except NoIntensityRegionException:
+            continue
+        max_pos = (gg.x_mean + prop.bbox[0], gg.y_mean + prop.bbox[1])
+        candidate = Candidate(t_0 + max_pos[1] * TimeDelta(d_t, format='sec'),
+                              max_pos[0] * float(d_dm))
+        candidates.append(candidate)
+
     return candidates
 
 
@@ -131,7 +146,8 @@ def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
 
 
 def search_candidates_ell(image, amplitude, x_stddev, x_cos_theta,
-                          y_to_x_stddev, theta_lims, t_0, d_t, d_dm):
+                          y_to_x_stddev, theta_lims, t_0, d_t, d_dm,
+                          save_fig=False):
     a = image.copy()
     s = generate_binary_structure(2, 2)
     # Label image
@@ -150,7 +166,7 @@ def search_candidates_ell(image, amplitude, x_stddev, x_cos_theta,
                 (abs(gg.y_stddev / gg.x_stddev) < y_to_x_stddev) and
                 (gg.amplitude > amplitude) and
                 (theta_lims[0] < np.rad2deg(gg.theta) % 180 < theta_lims[1])):
-            gg = fit_elliplse(prop, plot=True, show=False, close=True,
+            gg = fit_elliplse(prop, plot=save_fig, show=False, close=True,
                               save_file="search_ell_{}.png".format(i))
             max_pos = (gg.x_mean + prop.bbox[0], gg.y_mean + prop.bbox[1])
             candidate = Candidate(t_0 + max_pos[1] * TimeDelta(d_t,

@@ -38,7 +38,7 @@ for t_0_real, amp_real, width_real, dm_value_real in zip(t_0_reals, amp_reals,
 dm_grid = np.arange(0., 1000., d_dm)
 
 for antenna, ant_slice in zip(antennas, slices):
-    print "Creating Dynamical Spectra for antenna {}".format(antenna)
+    print "Loading dynamical dpectra for antenna {}".format(antenna)
     frame = mother_frame.slice(*ant_slice)
     print "Adding REAL FRBs to {} data".format(antenna)
     for t_0_real, amp_real, width_real, dm_value_real in zip(t_0_reals,

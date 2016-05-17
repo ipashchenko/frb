@@ -74,7 +74,10 @@ class Candidate(Base):
         self.dm = dm
 
     def __repr__(self):
-        return "Candidate. t: {}, DM: {}".format(self.t, self.dm)
+        # return "FRB candidate. t0: {}, DM: {}".format(self.t, self.dm)
+        return "FRB candidate. t0: " \
+               "{:%Y-%m-%d %H:%M:%S.%f}".format(self.t)[:-3] +\
+               " DM: {:.0f}".format(self.dm)
 
 
 # create a connection to a sqlite database

@@ -1,5 +1,6 @@
 import numpy as np
 from cfx import CFX
+from raw_data import M5
 from queries import connect_to_db, query_frb
 from search_candidates import Searcher
 from dedispersion import de_disperse_cumsum
@@ -36,13 +37,21 @@ class SearchExperiment(object):
         """
         return self.cfx.parse_cfx(self.exp_code)
 
-    def dsp_generator(self, m5file):
+    def dsp_generator(self, m5_file, m5_params):
         """
-        Generator that returns dsp arrays and metadata dictionary for given
-        dynamical spectra.
+        Generator that returns dsp arrays with dynamical spectra and metadata
+        dictionary for each dynamical spectra.
+
+        :param m5_file:
+            Raw data file in M5 format.
+        :param m5_params:
+            Dictionary with meta data.
         """
         raise NotImplementedError
 
+    # TODO: Add checking DB if searching for FRBs with the same set of
+    # de-dispersion + pre-processing + searching parameters was already done
+    # before.
     def run(self, de_disp_params, pre_process_params, search_params):
         """
         Run pipeline on experiment.
@@ -86,14 +95,19 @@ if __name__ == '__main__':
     cfx_file = None
     raw_data_dir = None
     db_file = '/home/ilya/code/akutkin/frb/frb/frb.db'
+    # Step used in de-dispersion
     d_dm = 30.
+    # Values of DM to de-disperse
     dm_grid = np.arange(0., 1000., d_dm)
+
+    # Arguments for searching function
     search_kwargs = {'x_stddev': 6.,
                      'y_to_x_stddev': 0.3,
                      'theta_lims': [130., 180.],
                      'x_cos_theta': 3.,
                      'd_dm': d_dm,
                      'amplitude': 3},
+    # Arguments for pre-processing function
     preprocess_kwargs = {'disk_size': 3,
                          'threshold_big_perc': 90.,
                          'threshold_perc': 97.5,
@@ -104,7 +118,10 @@ if __name__ == '__main__':
                           'kwargs': preprocess_kwargs}
     search_params = {'func': search_candidates_ell,
                      'kwargs': search_kwargs}
+
+    # Create pipeline
     pipeline = SearchExperiment(exp_code, cfx_file, raw_data_dir, db_file)
+    # Run pipeline with given parameters
     pipeline.run(de_disp_params, pre_process_params, search_params)
 
 

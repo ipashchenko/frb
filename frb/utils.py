@@ -10,7 +10,7 @@ vint = np.vectorize(int)
 
 # TODO: Clipping out pixels with high `noise` flux can remove real FRB if it
 # has high enough flux
-def find_noisy(dsp, n_max_components, frac=100):
+def find_noisy(dsp, n_max_components, frac=1, alpha=0.1):
     """
     Attempt to characterize the noise of dynamical spectra. Fitting Dirichlet
     Process Gaussian Mixture Model to histogram of ``dsp`` values. If 2 (or
@@ -21,9 +21,12 @@ def find_noisy(dsp, n_max_components, frac=100):
         2D numpy.ndarray of dynamical spectra (n_nu, n_t).
     :param n_max_components:
         Maximum number of components to check.
-    :param frac:
+    :param frac: (optional)
         Integer. Fraction ``1/frac`` will be used for ``sklearn.mixture.DPGMM``
-        fitting.
+        fitting. (default: ``1``)
+    :param alpha: (optional)
+        ``alpha`` parameter of DP. A higher alpha means more clusters, as the
+        expected number of clusters is ``alpha*log(N)``. (default: ``0.1``)
 
     :return:
         Tuple. First element is dictionary with keys - number of component,
@@ -34,7 +37,7 @@ def find_noisy(dsp, n_max_components, frac=100):
     data = dsp.copy()
     data = data.ravel()[::frac]
     data = data.reshape((data.size, 1))
-    clf = DPGMM(n_components=n_max_components, alpha=1)
+    clf = DPGMM(n_components=n_max_components, alpha=alpha)
     clf.fit(data)
     y = clf.predict(data)
     components = sorted(list(set(y)))

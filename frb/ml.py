@@ -1,8 +1,10 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from search_candidates import Searcher
 from search import get_ellipse_features_for_classification, max_pos
 from sklearn.svm import SVC
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.grid_search import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
@@ -170,10 +172,24 @@ class PulseClassifier(object):
             X.append(features)
             y.append((responses_dict[prop]))
 
+        print "Training sample consists of :"
+        print "0s: {}".format(y.count(0))
+        print "1s: {}".format(y.count(1))
+
         scaler = StandardScaler().fit(X)
         self.scaler = scaler
         X_scaled = scaler.transform(X)
         self._clf.fit(X_scaled, y)
+
+        # C_range = np.logspace(-2, 10, 13)
+        # gamma_range = np.logspace(-9, 3, 13)
+        # param_grid = dict(gamma=gamma_range, C=C_range)
+        # cv = StratifiedShuffleSplit(y, n_iter=5, test_size=0.2, random_state=42)
+        # grid = GridSearchCV(self._clf, param_grid=param_grid, cv=cv)
+        # grid.fit(X, y)
+
+        # print("The best parameters are %s with a score of %0.2f"
+        #       % (grid.best_params_, grid.best_score_))
         # param_grid = {'learning_rate': [0.3, 0.1, 0.05, 0.01],
         #               'max_depth': [3, 4, 6],
         #               'min_samples_leaf': [2, 3, 9, 17],
@@ -207,8 +223,12 @@ class PulseClassifier(object):
         for prop in sorted(features_dict):
             features = np.array(features_dict[prop])
             X.append(features)
+        print "Sample consists of {} samples".format(len(X))
         X_scaled = self.scaler.transform(X)
         y = self._clf.predict(X_scaled)
+        y_arr = np.array(y)
+        positive_indx = y_arr == 1
+        print self._clf.predict_proba(X_scaled[positive_indx])
         responces_dict = dict()
         for i, prop in enumerate(sorted(features_dict)):
             responces_dict[prop] = y[i]
@@ -231,3 +251,96 @@ def plot_2d(X_scaled, i, j, y, std=0.01):
     plt.ylabel("Feature {}".format(j))
 
 
+def pairs_1(data, labels=None):
+    """
+    Generate something similar to R `pair`.
+    See http://stackoverflow.com/questions/2682144/matplotlib-analog-of-rs-pairs
+    by bgbg
+
+    :param data:
+        Numpy.ndarray (n_points, n_features) with data.
+    :param labels: (optional)
+        Labels to plot. If ``None`` then don't plot labels. (default: ``None``)
+    """
+
+    import matplotlib.pyplot as plt
+
+    n_points, n_variables = data.shape
+    assert n_points > n_variables, "More features then data points?"
+
+    if labels is None:
+        labels = ['var%d' % i for i in range(n_variables)]
+    else:
+        assert len(labels) == n_variables
+    fig = plt.figure()
+    for i in range(n_variables):
+        for j in range(n_variables):
+            n_sub = i * n_variables + j + 1
+            ax = fig.add_subplot(n_variables, n_variables, n_sub)
+            if i == j:
+                ax.hist(data[:, i])
+                ax.set_title(labels[i])
+            else:
+                ax.plot(data[:, i], data[:, j], '.k')
+
+    return fig
+
+
+def pairs_2(data, names=None):
+    """
+    Quick&dirty scatterplot matrix.
+    See http://stackoverflow.com/questions/2682144/matplotlib-analog-of-rs-pairs
+    by Jouni K. Seppänen.
+
+    :param data:
+        Numpy.ndarray (n_features, n_points) with data.
+    :param names: (optional)
+        Labels to plot. If ``None`` then don't plot labels. (default: ``None``)
+
+    """
+
+    import matplotlib.pyplot as plt
+
+    d = len(data)
+    if names is None:
+        names = ['var%d' % i for i in range(d)]
+    else:
+        assert len(names) == d
+
+    fig, axes = plt.subplots(nrows=d, ncols=d, sharex='col', sharey='row')
+    for i in range(d):
+        for j in range(d):
+            ax = axes[i, j]
+            if i == j:
+                ax.text(0.5, 0.5, names[i], transform=ax.transAxes,
+                        horizontalalignment='center',
+                        verticalalignment='center', fontsize=16)
+            else:
+                ax.scatter(data[j], data[i], s=10)
+
+
+def pairs_pandas(data, names=None):
+    """
+    Plot pairs plot using ``pandas``.
+
+    :param data:
+        Numpy.ndarray (n_points, n_features) with data.
+    :param names: (optional)
+        Labels to plot. If ``None`` then don't plot labels. (default: ``None``)
+
+    """
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    n_points, n_variables = data.shape
+    assert n_points > n_variables, "More features then data points?"
+
+    if names is None:
+        names = ['var%d' % i for i in range(n_variables)]
+    else:
+        assert len(names) == n_variables
+
+    df = pd.DataFrame(data, columns=names)
+    axes = pd.tools.plotting.scatter_matrix(df, alpha=0.2)
+    plt.tight_layout()
+    plt.savefig('scatter_matrix.png')

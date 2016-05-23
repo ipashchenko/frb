@@ -71,6 +71,59 @@ def find_robust_gaussian_params(data):
     return mean, std
 
 
+def save_hdf5(fname, data, name, meta_data):
+    """
+    Save data to HDF5 format.
+
+    :param fname:
+        File to save data.
+    :param name:
+        Name of dataset to use.
+    :param data:
+        Numpy array with data.
+    :param meta_data:
+        Dictionary with meta-data.
+
+    :note:
+        HDF5 hasn't time formats. Use ``unicode(datetime)`` to create strings
+        with microseconds.
+    """
+    import h5py
+    f = h5py.File(fname, "w")
+    dset = f.create_dataset(name, data=data, chunks=True, compression='gzip')
+    for key, value in meta_data.items():
+        dset.attrs[key] = value
+    f.flush()
+    f.close()
+
+
+def read_hdf5(fname, name):
+    """
+    Read data from HDF5 format.
+
+    :param fname:
+        File to read data.
+    :param name:
+        Name of dataset to use.
+
+    :return:
+        Numpy array with data & dictionary with metadata.
+
+    :note:
+        HDF5 hasn't time formats. Use ``unicode(datetime)`` to create strings
+        with microseconds.
+    """
+    import h5py
+    f = h5py.File(fname, "r")
+    dset = f[name]
+    meta_data = dict()
+    for key, value in dset.attrs.items():
+        meta_data.update({str(key): value})
+    data = dset.value
+    f.close()
+    return data, meta_data
+
+
 def find_file(fname, path='/'):
     """
     Find a file ``fname`` in ``path``. Wildcards are supported

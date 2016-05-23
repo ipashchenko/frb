@@ -52,7 +52,8 @@ class SearchExperiment(object):
     # TODO: Add checking DB if searching for FRBs with the same set of
     # de-dispersion + pre-processing + searching parameters was already done
     # before.
-    def run(self, de_disp_params, pre_process_params, search_params):
+    def run(self, de_disp_params, pre_process_params, search_params,
+            antenna=None, except_antennas=None):
         """
         Run pipeline on experiment.
 
@@ -68,9 +69,14 @@ class SearchExperiment(object):
             with corresponding values passed to ``Searcher.run`` method.
         """
         for m5_file, m5_params in self.exp_params.items():
+            m5_antenna = m5_params['antenna']
+            if antenna and antenna != m5_antenna:
+                continue
+            if except_antennas and m5_antenna in except_antennas:
+                continue
             dsp_gen = self.dsp_generator(m5_file, m5_params)
             for dsp, dsp_param in dsp_gen:
-                searcher = Searcher(dsp, dsp_param)
+                searcher = Searcher(dsp, dsp_param, )
                 candidates = searcher.run(de_disp_params['func'],
                                           search_func=search_params['func'],
                                           preprocess_func=pre_process_params['func'],

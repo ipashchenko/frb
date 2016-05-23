@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+import h5py
 from candidates import SearchedData
 import hashlib
 import numpy as np
@@ -23,7 +25,7 @@ class Searcher(object):
         'pol': 'L', 't_0': ``instance of astropy.time.Time``, 'nu_max':
         ``1684.0``, 'd_nu': ``0.5``, 'd_t': ``0.001``}
     """
-    def __init__(self, dsp, meta_data):
+    def __init__(self, dsp, meta_data, cache_dir=None):
         self.dsp = dsp
 
         # Parsing meta-data
@@ -41,8 +43,17 @@ class Searcher(object):
         self.meta_data.update({'t_end': self.t_end.utc.datetime,
                                't_0': self.t_0.utc.datetime})
 
-        self._de_dispersed_cache = dict()
-        self._preprocessed_cache = dict()
+        if cache_dir is None:
+            cache_dir = os.getcwd()
+
+        self._de_disp_cache_fname = os.path.join(cache_dir,
+                                                 self._cache_fname_prefix +
+                                                 "_dedisp.hdf5")
+        self._pre_proces_cache_fname = os.path.join(cache_dir,
+                                                    self._cache_fname_prefix +
+                                                    "_preproc.hdf5")
+        self._de_dispersed_cache = h5py.File(self._de_disp_cache_fname)
+        self._preprocessed_cache = h5py.File(self._pre_proces_cache_fname)
 
         self._de_dispersed_data = None
         # This contain md5-sum for current de-dispersion parameters. We need
@@ -50,6 +61,15 @@ class Searcher(object):
         self._de_disp_m = None
 
         self._pre_processed_data = None
+
+    @property
+    def _cache_fname_prefix(self):
+        date_0, time_0 = str(self.meta_data['t_0']).split(' ')
+        date_1, time_1 = str(self.meta_data['t_end']).split(' ')
+        return "{}_{}_{}_{}_{}_{}_{}".format(self.meta_data['exp_code'],
+                                             self.meta_data['antenna'],
+                                             self.meta_data['band'], date_0,
+                                             time_0, date_1, time_1)
 
     def de_disperse(self, de_disp_func, *args, **kwargs):
         kwargs.update({'nu_max': self.nu_max, 'd_nu': self.d_nu,
@@ -65,10 +85,14 @@ class Searcher(object):
         result = self._de_dispersed_cache.get(key, None)
         if result is not None:
             print "Found cached de-dispersed data..."
+            result = result.value
         else:
             result = de_disp_func(self.dsp, *args, **kwargs)
             # Put to cache
-            self._de_dispersed_cache[key] = result
+            self._de_dispersed_cache.create_dataset(key, data=result,
+                                                    chunks=True,
+                                                    compression='gzip')
+            self._de_dispersed_cache.flush()
         self._de_dispersed_data = result
         self._de_disp_m = m.copy()
 
@@ -96,10 +120,14 @@ class Searcher(object):
             result = self._preprocessed_cache.get(key, None)
             if result is not None:
                 print "Found cached preprocessed data..."
+                result = result.value
             else:
                 result = preprocess_func(self._de_dispersed_data.copy(), *args,
                                          **kwargs)
-                self._preprocessed_cache[key] = result
+                self._preprocessed_cache.create_dataset(key, data=result,
+                                                        chunks=True,
+                                                        compression='gzip')
+                self._preprocessed_cache.flush()
 
         self._pre_processed_data = result
 

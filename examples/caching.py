@@ -45,41 +45,41 @@ searcher = Searcher(dsp=frame.values, meta_data=meta_data)
 
 # Run search for FRB with some parameters of de-dispersion, pre-processing,
 # searching algorithms
-# print "using ``search_candidates`` search function..."
-# candidates = searcher.run(de_disp_func=de_disperse_cumsum,
-#                           search_func=search_candidates,
-#                           preprocess_func=create_ellipses,
-#                           de_disp_args=[dm_grid],
-#                           search_kwargs={'n_d_x': 4., 'n_d_y': 15.,
-#                                          'd_dm': d_dm},
-#                           preprocess_kwargs={'disk_size': 3,
-#                                              'threshold_big_perc': 97.5,
-#                                              'threshold_perc': 98.5,
-#                                              'statistic': 'mean'})
-# print "Found {} candidates".format(len(candidates))
-# for candidate in candidates:
-#     print candidate
+print "using ``search_candidates`` search function..."
+candidates = searcher.run(de_disp_func=de_disperse_cumsum,
+                          search_func=search_candidates,
+                          preprocess_func=create_ellipses,
+                          de_disp_args=[dm_grid],
+                          search_kwargs={'n_d_x': 4., 'n_d_y': 15.,
+                                         'd_dm': d_dm},
+                          preprocess_kwargs={'disk_size': 3,
+                                             'threshold_big_perc': 97.5,
+                                             'threshold_perc': 98.5,
+                                             'statistic': 'mean'})
+print "Found {} candidates".format(len(candidates))
+for candidate in candidates:
+    print candidate
 
 # Run search for FRB with same parameters of de-dispersion, but different
 # pre-processing & searching algorithms
-# print "using ``search_candidates_ell`` search function..."
-# candidates = searcher.run(de_disp_func=de_disperse_cumsum,
-#                           search_func=search_candidates_ell,
-#                           preprocess_func=create_ellipses,
-#                           de_disp_args=[dm_grid],
-#                           search_kwargs={'x_stddev': 6., 'y_to_x_stddev': 0.3,
-#                                          'theta_lims': [130., 180.],
-#                                          'x_cos_theta': 3.,
-#                                          'd_dm': d_dm,
-#                                          'amplitude': 3.,
-#                                          'save_fig': True},
-#                           preprocess_kwargs={'disk_size': 3,
-#                                              'threshold_big_perc': 97.5,
-#                                              'threshold_perc': 98.5,
-#                                              'statistic': 'mean'})
-# print "Found {} candidates".format(len(candidates))
-# for candidate in candidates:
-#     print candidate
+print "using ``search_candidates_ell`` search function..."
+candidates = searcher.run(de_disp_func=de_disperse_cumsum,
+                          search_func=search_candidates_ell,
+                          preprocess_func=create_ellipses,
+                          de_disp_args=[dm_grid],
+                          search_kwargs={'x_stddev': 6., 'y_to_x_stddev': 0.3,
+                                         'theta_lims': [130., 180.],
+                                         'x_cos_theta': 3.,
+                                         'd_dm': d_dm,
+                                         'amplitude': 3.,
+                                         'save_fig': True},
+                          preprocess_kwargs={'disk_size': 3,
+                                             'threshold_big_perc': 97.5,
+                                             'threshold_perc': 98.5,
+                                             'statistic': 'mean'})
+print "Found {} candidates".format(len(candidates))
+for candidate in candidates:
+    print candidate
 
 print "using ``search_candidates_clf`` search function..."
 # ICreate classifier class instance

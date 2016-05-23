@@ -19,7 +19,7 @@ split_duration = 0.5 # split an M5-file into [sec] intervals
 
 
 ### INPUT CODE
-code = 'raks02ay'
+code = 'raks12ac'
 
 ### CFX Processing
 cfx_files = cfx.get_cfx(cfx_path, code)
@@ -38,10 +38,12 @@ for cfile in cfx_files:
         continue
     for fname, params in cfx_data.items():
             m5file = find_file(fname, data_path)
+
             if m5file is None:
-#                print("main: Can't find file: {}".format(fname))
+                print("main: Can't find file: {}".format(fname))
                 continue
-            if len(m5file) > 1:
+#            m5file = ['/home/osh/frb_test/raw_data/new_folder/Pa_rk02ay_test.m5b']
+            if len(list(m5file)) > 0:
                 print("main: Found more than one file \
                        matching ({}). Taking 1st one".format(fname))
             m5file = m5file[0]
@@ -53,8 +55,8 @@ for cfile in cfx_files:
             while offst*32e6 < m5.size:
                 dspec_params.update({'offst':offst})
 #                print dspec_params
-
                 ds = m5.create_dspec(**dspec_params)
+
                 # NOTE: all 4 channels are stacked forming dsarr:
                 dsarr = raw_data.dspec_cat(os.path.basename(ds['Dspec_file']),
                                            cfx_fmt)

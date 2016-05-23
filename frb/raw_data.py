@@ -143,7 +143,8 @@ def dspec_cat(fname, cfx_fmt, pol=True, uplow=True):
     return arr/2
 
 
-
+if __name__ == "__main__":
+    f = create_dspec()
 
 
 

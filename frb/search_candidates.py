@@ -14,12 +14,14 @@ class Searcher(object):
         2D numpy array with dynamical spectra.
     :param meta_data:
         Dictionary with metadata describing current dynamical spectra. It must
-        include ``exp_name``, ``antenna``, ``freq``, ``band``, ``pol``, ``t_0``,
-        ``nu_max``, ``d_nu``, ``d_t`` keys.
+        include ``exp_name`` [string], ``antenna`` [string], ``freq`` [string],
+        ``band`` [string], ``pol`` [string], ``t_0`` [astropy.time.Time],
+        ``nu_max`` [number, MHz], ``d_nu`` [number, MHz], ``d_t`` [number, s]
+        keys.
 
         Eg. {'exp_name': 'raks03ra', 'antenna': 'AR'. 'freq': 'L', 'band': 'U',
-        'pol': 'L', 't_0': ``instance of astropy.time.Time``, 'nu_max': 1684.0,
-        'd_nu': 0.5, 'd_t': ``instance of astopy.time.TimeDelta``}
+        'pol': 'L', 't_0': ``instance of astropy.time.Time``, 'nu_max':
+        ``1684.0``, 'd_nu': ``0.5``, 'd_t': ``0.001``}
     """
     def __init__(self, dsp, meta_data):
         self.dsp = dsp
@@ -35,7 +37,7 @@ class Searcher(object):
         self.d_t = d_t
         self.nu_max = meta_data.get('nu_max')
 
-        self.meta_data = meta_data
+        self.meta_data = meta_data.copy()
         self.meta_data.update({'t_end': self.t_end.utc.datetime,
                                't_0': self.t_0.utc.datetime})
 
@@ -95,7 +97,7 @@ class Searcher(object):
             if result is not None:
                 print "Found cached preprocessed data..."
             else:
-                result = preprocess_func(self._de_dispersed_data, *args,
+                result = preprocess_func(self._de_dispersed_data.copy(), *args,
                                          **kwargs)
                 self._preprocessed_cache[key] = result
 
@@ -109,7 +111,8 @@ class Searcher(object):
             List of ``Candidate`` instances.
         """
         kwargs.update({'t_0': self.t_0, 'd_t': self.d_t})
-        candidates = search_func(self._pre_processed_data, *args, **kwargs)
+        candidates = search_func(self._pre_processed_data.copy(), *args,
+                                 **kwargs)
 
         return candidates
 
@@ -118,7 +121,7 @@ class Searcher(object):
             search_kwargs={}, preprocess_args=[], preprocess_kwargs={},
             db_file=None):
         """
-        
+
         :param de_disp_func:
             Function that used to de-disperse dynamical spectra.
         :param search_func:
@@ -167,12 +170,11 @@ class Searcher(object):
 
         # Save to DB metadata of dsp
         algo = 'de_disp_{}_{}_{} pre_process_{}_{}_{}' \
-               ' search_{}_{}_{}'.format(de_disp_func.__name__, de_disp_args,
+               ' search_{}_{}'.format(de_disp_func.__name__, de_disp_args,
                                          de_disp_kwargs,
                                          preprocess_func.__name__,
                                          preprocess_args, preprocess_kwargs,
-                                         search_func.__name__, search_args,
-                                         search_kwargs)
+                                         search_func.__name__, search_kwargs)
         searched_data = SearchedData(algo=algo, **self.meta_data)
         searched_data.candidates = candidates
         # Saving searched meta-data and found candidates to DB

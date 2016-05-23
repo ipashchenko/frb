@@ -40,7 +40,7 @@ def de_disperse_cumsum(dyn_spectr, dm_values, *args, **kwargs):
     nu = np.arange(n_nu, dtype=float)
     nu = (nu_max - nu * d_nu)[::-1]
     # Pre-calculating cumulative sums and their difference
-    cumsums = np.cumsum(dyn_spectr[::-1, :], axis=0)
+    cumsums = np.ma.cumsum(dyn_spectr[::-1, :], axis=0)
     dcumsums = np.roll(cumsums, 1, axis=1) - cumsums
 
     # Calculate shift of time caused by de-dispersion for all channels and all

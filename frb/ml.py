@@ -228,6 +228,8 @@ class PulseClassifier(object):
         y = self._clf.predict(X_scaled)
         y_arr = np.array(y)
         positive_indx = y_arr == 1
+        print "Predicted probabilities of being fake/real FRBs for found" \
+              " candidates :"
         print self._clf.predict_proba(X_scaled[positive_indx])
         responces_dict = dict()
         for i, prop in enumerate(sorted(features_dict)):

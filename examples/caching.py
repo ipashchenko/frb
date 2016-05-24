@@ -10,8 +10,10 @@ from frb.ml import PulseClassifier
 
 print "Loading dynamical spectra"
 txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
-frame = create_from_txt(txt, 1684., 0, 16./128, 0.001)
+meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
+             'exp_code': 'raks00'}
 t0 = Time.now()
+frame = create_from_txt(txt, 1684., 16./128, 0.001, meta_data, t0)
 print "Start time {}".format(t0)
 # Number of artificially injected pulses
 n_pulses = 20
@@ -34,14 +36,11 @@ for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
           " t0={:%Y-%m-%d %H:%M:%S.%f},".format(t_1.utc.datetime)[:-3] +\
           " amp={:.2f}, width={:.4f}, dm={:.0f}".format(amp, width, dm)
 
-meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
-             'exp_code': 'raks00', 'nu_max': 1684., 't_0': t0, 'd_nu': 16./128.,
-             'd_t': 0.001}
 # Values of DM to de-disperse
 dm_grid = np.arange(0., 1000., d_dm)
 
 # Initialize searcher class
-searcher = Searcher(dsp=frame.values, meta_data=meta_data)
+searcher = Searcher(frame)
 
 # Run search for FRB with some parameters of de-dispersion, pre-processing,
 # searching algorithms
@@ -91,12 +90,8 @@ pclf = PulseClassifier(de_disperse_cumsum, create_ellipses,
                                           'statistic': 'mean'},
                        clf_kwargs={'kernel': 'rbf', 'probability': True,
                                    'class_weight': 'balanced'})
-dsp = create_from_txt(txt, 1684., 0, 16./128, 0.001)
+dsp = create_from_txt(txt, 1684., 16./128, 0.001, meta_data, t_0=Time.now())
 dsp = dsp.slice(0.2, 0.5)
-t0 = Time.now()
-dsp.meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
-                 'exp_code': 'raks00', 'nu_max': 1684., 't_0': t0,
-                 'd_nu': 16./128., 'd_t': 0.001}
 
 # Generate values of pulses in training sample
 print "Creating training sample"

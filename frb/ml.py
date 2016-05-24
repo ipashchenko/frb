@@ -53,7 +53,7 @@ class PulseClassifier(object):
             print "Adding pulse with t0={:.3f}, amp={:.2f}, width={:.4f}," \
                   " DM={:.0f}".format(*pars)
             dsp.add_pulse(*pars)
-        searcher = Searcher(dsp.values, dsp.meta_data)
+        searcher = Searcher(dsp)
         searcher.de_disperse(self.de_disp_func, *self.de_disp_args,
                              **self.de_disp_kwargs)
         searcher.pre_process(self.preprocess_func, *self.preprocess_args,
@@ -77,7 +77,7 @@ class PulseClassifier(object):
                                                  searcher._de_dispersed_data)
                 # print "max_pos, dt, dm for prop: ", max_pos_, _d_dt, _d_dm
                 dm__, t_ = max_pos_
-                t_ *= dsp.dt
+                t_ *= dsp.d_t.sec
                 dm__ *= dm_delta
                 prop.t0 = t_
                 prop.dm0 = dm__
@@ -111,7 +111,7 @@ class PulseClassifier(object):
                     dsp.rm_pulse(*pars)
 
         # Again find props now without pulses that can't be found
-        searcher = Searcher(dsp.values, dsp.meta_data)
+        searcher = Searcher(dsp)
         searcher.de_disperse(self.de_disp_func, *self.de_disp_args,
                              **self.de_disp_kwargs)
         searcher.pre_process(self.preprocess_func, *self.preprocess_args,
@@ -134,7 +134,7 @@ class PulseClassifier(object):
                 max_pos_, _d_dt, _d_dm = max_pos(prop,
                                                  searcher._de_dispersed_data)
                 dm__, t_ = max_pos_
-                t_ *= dsp.dt
+                t_ *= dsp.d_t.sec
                 dm__ *= dm_delta
                 prop.t0 = t_
                 prop.dm0 = dm__

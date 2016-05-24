@@ -14,38 +14,18 @@ class Searcher(object):
 
     :param dsp:
         2D numpy array with dynamical spectra.
-    :param meta_data:
-        Dictionary with metadata describing current dynamical spectra. It must
-        include ``exp_name`` [string], ``antenna`` [string], ``freq`` [string],
-        ``band`` [string], ``pol`` [string], ``t_0`` [astropy.time.Time],
-        ``nu_max`` [number, MHz], ``d_nu`` [number, MHz], ``d_t`` [number, s]
-        keys.
-
-        Eg. {'exp_name': 'raks03ra', 'antenna': 'AR'. 'freq': 'L', 'band': 'U',
-        'pol': 'L', 't_0': ``instance of astropy.time.Time``, 'nu_max':
-        ``1684.0``, 'd_nu': ``0.5``, 'd_t': ``0.001``}
 
     :param cache_dir: (optional)
         Directory to store cache HDF5 files. If ``None`` - use CWD. (default:
         ``None``)
     """
-    def __init__(self, dsp, meta_data, cache_dir=None):
+    def __init__(self, dsp, cache_dir=None):
         self.dsp = dsp
+        self.meta_data = dsp.meta_data.copy()
 
-        # Parsing meta-data
-        n_nu, n_t = np.shape(dsp)
-        self.n_nu = n_nu
-        self.n_t = n_t
-        self.t_0 = meta_data.get('t_0')
-        self.d_nu = meta_data.get('d_nu')
-        d_t = meta_data.get('d_t')
-        self.t_end = self.t_0 + n_t * TimeDelta(d_t, format='sec')
-        self.d_t = d_t
-        self.nu_max = meta_data.get('nu_max')
-
-        self.meta_data = meta_data.copy()
-        self.meta_data.update({'t_end': self.t_end.utc.datetime,
-                               't_0': self.t_0.utc.datetime})
+        # This needed for string conversion
+        self.meta_data.update({'t_end': self.dsp.t_end.utc.datetime,
+                               't_0': self.dsp.t_0.utc.datetime})
 
         if cache_dir is None:
             cache_dir = os.getcwd()
@@ -67,6 +47,7 @@ class Searcher(object):
 
         self._pre_processed_data = None
 
+    # TODO: Add n_nu, n_t, d_nu, d_t, nu_max
     @property
     def _cache_fname_prefix(self):
         date_0, time_0 = str(self.meta_data['t_0']).split(' ')
@@ -77,8 +58,6 @@ class Searcher(object):
                                              time_0, date_1, time_1)
 
     def de_disperse(self, de_disp_func, *args, **kwargs):
-        kwargs.update({'nu_max': self.nu_max, 'd_nu': self.d_nu,
-                       'd_t': self.d_t})
         # Sort kwargs keys before checking in cache
         kwargs = {key: kwargs[key] for key in sorted(kwargs)}
         m = hashlib.md5()
@@ -143,7 +122,8 @@ class Searcher(object):
         :return:
             List of ``Candidate`` instances.
         """
-        kwargs.update({'t_0': self.t_0, 'd_t': self.d_t})
+        kwargs.update({'t_0': self.dsp.t_0,
+                       'd_t': self.dsp.d_t})
         candidates = search_func(self._pre_processed_data.copy(), *args,
                                  **kwargs)
 

@@ -91,7 +91,7 @@ class SearchExperiment(object):
                                           preprocess_kwargs=pre_process_params['kwargs'],
                                           db_file=self.db_file)
 
-        session = connect_to_db("/home/ilya/code/akutkin/frb/frb/frb.db")
+        session = connect_to_db(self.db_file)
         # Query DB
         frb_list = query_frb(session, self.exp_code, d_dm=200., d_t=0.1)
         print "Found FRBs:"

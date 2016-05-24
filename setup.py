@@ -22,5 +22,6 @@ setup(
         "scipy >= 0.12.0",
         "astropy",
         "sklearn",
-        "ftputil"
+        "ftputil",
+        "h5py"
     ],)

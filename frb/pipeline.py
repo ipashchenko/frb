@@ -53,7 +53,7 @@ class SearchExperiment(object):
     # de-dispersion + pre-processing + searching parameters was already done
     # before.
     def run(self, de_disp_params, pre_process_params, search_params,
-            antenna=None, except_antennas=None):
+            antenna=None, except_antennas=None, cache_dir=None):
         """
         Run pipeline on experiment.
 
@@ -63,6 +63,9 @@ class SearchExperiment(object):
             Dictionary with pre-processing parameters.
         :param search_params:
             Dictionary with searching parameters.
+        :param cache_dir: (optional)
+            Directory to store cache HDF5 files. If ``None`` - use CWD.
+            (default: ``None``)
 
         :note:
             Argument dictionaries should have keys: 'func', 'args', 'kwargs'
@@ -76,7 +79,7 @@ class SearchExperiment(object):
                 continue
             dsp_gen = self.dsp_generator(m5_file, m5_params)
             for dsp, dsp_param in dsp_gen:
-                searcher = Searcher(dsp, dsp_param, )
+                searcher = Searcher(dsp, dsp_param, cache_dir=cache_dir)
                 candidates = searcher.run(de_disp_params['func'],
                                           search_func=search_params['func'],
                                           preprocess_func=pre_process_params['func'],

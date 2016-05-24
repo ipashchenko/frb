@@ -24,6 +24,10 @@ class Searcher(object):
         Eg. {'exp_name': 'raks03ra', 'antenna': 'AR'. 'freq': 'L', 'band': 'U',
         'pol': 'L', 't_0': ``instance of astropy.time.Time``, 'nu_max':
         ``1684.0``, 'd_nu': ``0.5``, 'd_t': ``0.001``}
+
+    :param cache_dir: (optional)
+        Directory to store cache HDF5 files. If ``None`` - use CWD. (default:
+        ``None``)
     """
     def __init__(self, dsp, meta_data, cache_dir=None):
         self.dsp = dsp
@@ -45,6 +49,7 @@ class Searcher(object):
 
         if cache_dir is None:
             cache_dir = os.getcwd()
+        self.cache_dir = cache_dir
 
         self._de_disp_cache_fname = os.path.join(cache_dir,
                                                  self._cache_fname_prefix +

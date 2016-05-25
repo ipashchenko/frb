@@ -1,5 +1,5 @@
 import numpy as np
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 from frb.frames import create_from_txt
 from frb.search_candidates import Searcher
 from frb.dedispersion import de_disperse_cumsum
@@ -9,20 +9,22 @@ from frb.queries import query_frb, connect_to_db
 
 # Set random generator seed for reproducibility
 np.random.seed(1)
+# DB file
+db_file = '/home/ilya/code/akutkin/frb/frb/frb.db'
 
 # Real data from WB
 txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
-mother_frame = create_from_txt(txt, 1684., 0, 16./128, 0.001)
-exp_code = 'raks00'
+meta_data = {'antenna': None, 'freq': 'L', 'band': 'U', 'pol': 'R',
+             'exp_code': 'raks00'}
+t0 = Time.now()
+mother_frame = create_from_txt(txt, 1684., 16./128, 0.001, meta_data, t0)
+
 antennas = ['AR', 'EF', 'RA']
 slices = [(0., 0.3), (0.3, 0.7), (0.7, 1)]
 # Step of de-dispersion
 d_dm = 30.
 
-# Zero time
-t = Time.now()
-print "Zero time: {}".format(t)
-n_real = 5
+n_real = 2
 # Time of `real` FRB
 t_0_reals = np.linspace(0, 30, n_real+2)[1:-1]
 amp_reals = np.random.uniform(0.25, 0.35, size=n_real)
@@ -32,14 +34,18 @@ dm_value_reals = np.random.uniform(100, 500, size=n_real)
 for t_0_real, amp_real, width_real, dm_value_real in zip(t_0_reals, amp_reals,
                                                          width_reals,
                                                          dm_value_reals):
-    print "REAL FRB: t={}, A={}, W={}, DM={}".format(t_0_real, amp_real,
-                                                     width_real, dm_value_real)
+    t_1 = t0 + TimeDelta(t_0_real, format='sec')
+    print "REAL FRBs are" \
+          " t0={:%Y-%m-%d %H:%M:%S.%f},".format(t_1.utc.datetime)[:-3] + \
+          " amp={:.2f}, width={:.4f}, dm={:.0f}".format(amp_real, width_real,
+                                                        dm_value_real)
 # Values of DM to de-disperse
 dm_grid = np.arange(0., 1000., d_dm)
 
 for antenna, ant_slice in zip(antennas, slices):
     print "Loading dynamical dpectra for antenna {}".format(antenna)
     frame = mother_frame.slice(*ant_slice)
+    frame.meta_data.update({'antenna': antenna})
     print "Adding REAL FRBs to {} data".format(antenna)
     for t_0_real, amp_real, width_real, dm_value_real in zip(t_0_reals,
                                                              amp_reals,
@@ -47,11 +53,8 @@ for antenna, ant_slice in zip(antennas, slices):
                                                              dm_value_reals):
         frame.add_pulse(t_0_real, amp_real, width_real, dm_value_real)
 
-    meta_data = {'antenna': antenna, 'freq': 'L', 'band': 'U', 'pol': 'R',
-                 'exp_code': 'raks00', 'nu_max': 1684., 't_0': t,
-                 'd_nu': 16./128., 'd_t': 0.001}
     # Initialize searcher class
-    searcher = Searcher(dsp=frame.values, meta_data=meta_data)
+    searcher = Searcher(frame)
     # Run search for FRB with some parameters of de-dispersion, pre-processing,
     # searching algorithms
     candidates = searcher.run(de_disp_func=de_disperse_cumsum,
@@ -68,15 +71,15 @@ for antenna, ant_slice in zip(antennas, slices):
                                                  'threshold_big_perc': 90.,
                                                  'threshold_perc': 97.5,
                                                  'statistic': 'mean'},
-                              db_file='/home/ilya/code/akutkin/frb/frb/frb.db')
+                              db_file=db_file)
     print "Found {} candidates".format(len(candidates))
     for candidate in candidates:
         print candidate
 
 
-session = connect_to_db("/home/ilya/code/akutkin/frb/frb/frb.db")
+session = connect_to_db(db_file)
 # Query DB
-frb_list = query_frb(session, exp_code, d_dm=200., d_t=0.1)
+frb_list = query_frb(session, meta_data['exp_code'], d_dm=200., d_t=0.1)
 print "Found FRBs:"
 for frb in frb_list:
     print frb

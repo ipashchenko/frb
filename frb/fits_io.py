@@ -159,15 +159,3 @@ if __name__ == '__main__':
     nu_max = np.max(nu_array.ravel()) / 10 ** 6
     d_nu = (nu_array[0][1:] - nu_array[0][:-1])[0] / 10 ** 6
     d_t = (t[1] - t[0]).sec
-    ddsp_kwargs = dict()
-    ddsp_kwargs.update({'nu_max': nu_max, 'd_nu': d_nu, 'd_t': d_t})
-
-    from frames import Frame
-    frame = Frame(128, len(t), nu_max, 0., 32./128, d_t)
-    # frame.add_values(dsp)
-    frame.add_pulse(50., 1., 0.003, dm=500.)
-    frame.add_noise(1.)
-
-    from dedispersion import de_disperse
-    print("Desipersing")
-    tdm = de_disperse(frame.values, np.arange(0., 1000., 25.), **ddsp_kwargs)

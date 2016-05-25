@@ -39,8 +39,7 @@ class SearchExperiment(object):
 
     def dsp_generator(self, m5_file, m5_params):
         """
-        Generator that returns dsp arrays with dynamical spectra and metadata
-        dictionary for each dynamical spectra.
+        Generator that returns instances of ``DynSpectra`` class.
 
         :param m5_file:
             Raw data file in M5 format.
@@ -63,6 +62,12 @@ class SearchExperiment(object):
             Dictionary with pre-processing parameters.
         :param search_params:
             Dictionary with searching parameters.
+        :param antenna: (optional)
+            Antenna to search. If ``None`` then search all available. (default:
+            ``None``)
+        :param except_antennas: (optional)
+            Antennas not to search. If ``None`` then search all available.
+            (default: ``None``)
         :param cache_dir: (optional)
             Directory to store cache HDF5 files. If ``None`` - use CWD.
             (default: ``None``)
@@ -78,8 +83,8 @@ class SearchExperiment(object):
             if except_antennas and m5_antenna in except_antennas:
                 continue
             dsp_gen = self.dsp_generator(m5_file, m5_params)
-            for dsp, dsp_param in dsp_gen:
-                searcher = Searcher(dsp, dsp_param, cache_dir=cache_dir)
+            for dsp in dsp_gen:
+                searcher = Searcher(dsp, cache_dir=cache_dir)
                 candidates = searcher.run(de_disp_params['func'],
                                           search_func=search_params['func'],
                                           preprocess_func=pre_process_params['func'],

@@ -1,6 +1,7 @@
+import os
 import numpy as np
 from cfx import CFX
-from raw_data import M5
+from raw_data import M5, dspec_cat
 from queries import connect_to_db, query_frb
 from search_candidates import Searcher
 from dedispersion import de_disperse_cumsum
@@ -12,12 +13,15 @@ class SearchExperiment(object):
     Class that handles searching FRBs in one experiment.
     """
 
-    def __init__(self, exp_code, cfx_file, raw_data_dir, db_file):
+    def __init__(self, exp_code, cfx_file, dsp_params, raw_data_dir, db_file):
         """
         :param exp_code:
             Experiment code.
         :param cfx_file:
             Path to experiment CFX file.
+        :param dsp_params:
+            Parameters of dynamical spectra to create. Dictionary with the
+            following keys: `nchan` [ex. 64], `dt` [ms].
         :param raw_data_dir:
             Directory with subdirectories that contains raw data for all
             antennas.
@@ -26,6 +30,7 @@ class SearchExperiment(object):
         """
         self.exp_code = exp_code
         self.cfx_file = cfx_file
+        self.dsp_params = dsp_params
         self.raw_data_dir = raw_data_dir
         self.db_file = db_file
         self.cfx = CFX(cfx_file)
@@ -46,7 +51,18 @@ class SearchExperiment(object):
         :param m5_params:
             Dictionary with meta data.
         """
-        raise NotImplementedError
+        dsp_params = self.dsp_params.copy()
+        m5 = M5(m5_file, fmt=m5_params[2])
+        offset = 0.
+        while offset * 32e6 < m5.size:
+            self.dsp_params.update({'offst': offset})
+            ds = m5.create_dspec(**dsp_params)
+
+            # NOTE: all 4 channels are stacked forming dsarr:
+            dsarr = dspec_cat(os.path.basename(ds['Dspec_file']), m5_params[2])
+            metadata = ds
+            metadata['Raw_data_file'] = m5_file
+            metadata['Exp_data'] = m5_params
 
     # TODO: Add checking DB if searching for FRBs with the same set of
     # de-dispersion + pre-processing + searching parameters was already done
@@ -106,9 +122,9 @@ class SearchExperiment(object):
 
 if __name__ == '__main__':
     exp_code = 'raks12er'
-    cfx_file = None
-    raw_data_dir = None
-    db_file = '/home/ilya/code/akutkin/frb/frb/frb.db'
+    cfx_file = '/home/ilya/code/frb/GVLBI_RAKS12ER_L_20151105T130000_ASC_V1.cfx'
+    raw_data_dir = '/mnt/frb_data/raw_data/2015_309_raks12er/'
+    db_file = '/home/ilya/code/frb/frb/frb.db'
     # Step used in de-dispersion
     d_dm = 30.
     # Values of DM to de-disperse

@@ -51,18 +51,7 @@ class SearchExperiment(object):
         :param m5_params:
             Dictionary with meta data.
         """
-        dsp_params = self.dsp_params.copy()
-        m5 = M5(m5_file, fmt=m5_params[2])
-        offset = 0.
-        while offset * 32e6 < m5.size:
-            self.dsp_params.update({'offst': offset})
-            ds = m5.create_dspec(**dsp_params)
-
-            # NOTE: all 4 channels are stacked forming dsarr:
-            dsarr = dspec_cat(os.path.basename(ds['Dspec_file']), m5_params[2])
-            metadata = ds
-            metadata['Raw_data_file'] = m5_file
-            metadata['Exp_data'] = m5_params
+        raise NotImplementedError
 
     # TODO: Add checking DB if searching for FRBs with the same set of
     # de-dispersion + pre-processing + searching parameters was already done

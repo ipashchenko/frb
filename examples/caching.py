@@ -1,6 +1,6 @@
 import numpy as np
 from astropy.time import Time, TimeDelta
-from frb.frames import create_from_txt
+from frb.dyn_spectra import create_from_txt
 from frb.search_candidates import Searcher
 from frb.dedispersion import de_disperse_cumsum
 from frb.search import (search_candidates, search_candidates_ell,
@@ -10,10 +10,10 @@ from frb.ml import PulseClassifier
 
 print "Loading dynamical spectra"
 txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
-meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
+meta_data = {'antenna': 'WB', 'freq': 'l', 'band': 'u', 'pol': 'r',
              'exp_code': 'raks00'}
 t0 = Time.now()
-frame = create_from_txt(txt, 1684., 16./128, 0.001, meta_data, t0)
+dsp = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data, t0)
 print "Start time {}".format(t0)
 # Number of artificially injected pulses
 n_pulses = 20
@@ -27,10 +27,10 @@ np.random.seed(123)
 amps = np.random.uniform(0.15, 0.25, size=n_pulses)
 widths = np.random.uniform(0.001, 0.003, size=n_pulses)
 dm_values = np.random.uniform(100, 500, size=n_pulses)
-times = np.linspace(0.1, frame.shape[0] - 0.1, n_pulses)
+times = np.linspace(0.1, dsp.shape[0] - 0.1, n_pulses)
 # Injecting pulses
 for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
-    frame.add_pulse(t_0, amp, width, dm)
+    dsp.add_pulse(t_0, amp, width, dm)
     t_1 = t0 + TimeDelta(t_0, format='sec')
     print "Adding pulse with" \
           " t0={:%Y-%m-%d %H:%M:%S.%f},".format(t_1.utc.datetime)[:-3] +\
@@ -40,7 +40,7 @@ for t_0, amp, width, dm in zip(times, amps, widths, dm_values):
 dm_grid = np.arange(0., 1000., d_dm)
 
 # Initialize searcher class
-searcher = Searcher(frame)
+searcher = Searcher(dsp)
 
 # Run search for FRB with some parameters of de-dispersion, pre-processing,
 # searching algorithms
@@ -90,8 +90,9 @@ pclf = PulseClassifier(de_disperse_cumsum, create_ellipses,
                                           'statistic': 'mean'},
                        clf_kwargs={'kernel': 'rbf', 'probability': True,
                                    'class_weight': 'balanced'})
-dsp = create_from_txt(txt, 1684., 16./128, 0.001, meta_data, t_0=Time.now())
-dsp = dsp.slice(0.2, 0.5)
+dsp_training = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data,
+                               t_0=Time.now())
+dsp_training = dsp_training.slice(0.2, 0.5)
 
 # Generate values of pulses in training sample
 print "Creating training sample"
@@ -100,8 +101,8 @@ amps = np.random.uniform(0.15, 0.25, size=n_training_pulses)
 widths = np.random.uniform(0.001, 0.003, size=n_training_pulses)
 dm_values = np.random.uniform(100, 500, size=n_training_pulses)
 times = np.linspace(0, 30, n_training_pulses+2)[1: -1]
-features_dict, responses_dict = pclf.create_samples(dsp, amps, dm_values,
-                                                    widths)
+features_dict, responses_dict = pclf.create_samples(dsp_training, amps,
+                                                    dm_values, widths)
 # print "Training classifier"
 pclf.train(features_dict, responses_dict)
 

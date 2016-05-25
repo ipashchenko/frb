@@ -1,6 +1,6 @@
 import numpy as np
 from astropy.time import Time, TimeDelta
-from frb.frames import create_from_txt
+from frb.dyn_spectra import create_from_txt
 from frb.search_candidates import Searcher
 from frb.dedispersion import de_disperse_cumsum
 from frb.search import search_candidates_ell, create_ellipses
@@ -14,10 +14,10 @@ db_file = '/home/ilya/code/akutkin/frb/frb/frb.db'
 
 # Real data from WB
 txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
-meta_data = {'antenna': None, 'freq': 'L', 'band': 'U', 'pol': 'R',
+meta_data = {'antenna': None, 'freq': 'l', 'band': 'u', 'pol': 'r',
              'exp_code': 'raks00'}
 t0 = Time.now()
-mother_frame = create_from_txt(txt, 1684., 16./128, 0.001, meta_data, t0)
+mother_dsp = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data, t0)
 
 antennas = ['AR', 'EF', 'RA']
 slices = [(0., 0.3), (0.3, 0.7), (0.7, 1)]
@@ -44,17 +44,17 @@ dm_grid = np.arange(0., 1000., d_dm)
 
 for antenna, ant_slice in zip(antennas, slices):
     print "Loading dynamical dpectra for antenna {}".format(antenna)
-    frame = mother_frame.slice(*ant_slice)
-    frame.meta_data.update({'antenna': antenna})
+    dsp = mother_dsp.slice(*ant_slice)
+    dsp.meta_data.update({'antenna': antenna})
     print "Adding REAL FRBs to {} data".format(antenna)
     for t_0_real, amp_real, width_real, dm_value_real in zip(t_0_reals,
                                                              amp_reals,
                                                              width_reals,
                                                              dm_value_reals):
-        frame.add_pulse(t_0_real, amp_real, width_real, dm_value_real)
+        dsp.add_pulse(t_0_real, amp_real, width_real, dm_value_real)
 
     # Initialize searcher class
-    searcher = Searcher(frame)
+    searcher = Searcher(dsp)
     # Run search for FRB with some parameters of de-dispersion, pre-processing,
     # searching algorithms
     candidates = searcher.run(de_disp_func=de_disperse_cumsum,

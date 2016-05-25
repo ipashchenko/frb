@@ -2,7 +2,7 @@ import multiprocessing
 import ctypes
 import numpy as np
 import pickle_method
-from utils import vint, vround
+from utils import vint, vround, save_hdf5, read_hdf5
 from astropy.time import Time, TimeDelta
 
 try:
@@ -11,7 +11,52 @@ except ImportError:
     plt = None
 
 
-class Frame(object):
+class MetaData(dict):
+    """
+    Class that describes RA experiment metadata.
+
+    See http://stackoverflow.com/questions/2060972/subclassing-python-dictionary-to-override-setitem
+    """
+
+    meta_keys = ['exp_code', 'antenna', 'freq', 'band', 'pol']
+    required_keys = meta_keys
+    meta_values = {'freq': ('k', 'c', 'l', 'p'), 'band': ('u', 'l', 'ul'),
+                   'pol': ('l', 'r', 'lr')}
+
+    def __init__(self, *args, **kwargs):
+        super(MetaData, self).__init__()
+        self.update(*args, **kwargs)
+        for key in self.required_keys:
+            if key not in self:
+                raise Exception("Absent key {} in metadata".format(key))
+
+    def __setitem__(self, key, value):
+        # optional processing here
+        if key not in self.meta_keys:
+            raise Exception("Not allowed key in metadata: {}".format(key))
+        if key in self.meta_values and value not in self.meta_values[key]:
+            raise Exception("Not allowed value: {} in"
+                            " metadata for key: {}".format(value, key))
+        super(MetaData, self).__setitem__(key, value)
+
+    def update(self, *args, **kwargs):
+        if args:
+            if len(args) > 1:
+                raise TypeError("update expected at most 1 arguments, "
+                                "got {}".format(len(args)))
+            other = dict(args[0])
+            for key in other:
+                self[key] = other[key]
+        for key in kwargs:
+            self[key] = kwargs[key]
+
+    def setdefault(self, key, value=None):
+        if key not in self:
+            self[key] = value
+        return self[key]
+
+
+class DynSpectra(object):
     """
     Basic class that represents a set of regularly spaced frequency channels
     with regularly measured values (time sequence of autospectra).
@@ -24,22 +69,31 @@ class Frame(object):
         Frequency of highest frequency channel [MHz].
     :param dnu:
         Width of spectral channel [MHz].
-    :param dt:
+    :param d_t:
         Time step [s].
+    :param meta_data:
+        Dictionary with metadata describing current dynamical spectra. It must
+        include ``exp_code`` [string], ``antenna`` [string], ``freq`` [string],
+        ``band`` [string], ``pol`` [string] keys.
+        Eg. {'exp_name': 'raks03ra', 'antenna': 'AR'. 'freq': 'L', 'band': 'U',
+        'pol': 'L'}
     :param t_0: (optional)
         Time of first measurement. Instance of ``astropy.time.Time`` class. If
         ``None`` then use time of initialization. (default: ``None``)
 
     """
-    def __init__(self, n_nu, n_t, nu_0, d_nu, d_t, t_0=None):
+
+
+    def __init__(self, n_nu, n_t, nu_0, d_nu, d_t, meta_data=None, t_0=None):
         self.n_nu = n_nu
         self.n_t = n_t
         self.nu_0 = nu_0
         self.t_0 = t_0 or Time.now()
         # Using shared array (http://stackoverflow.com/questions/5549190 by pv.)
         shared_array_base = multiprocessing.Array(ctypes.c_float, n_nu * n_t)
-        self.values = np.ctypeslib.as_array(shared_array_base.get_obj()).reshape((n_nu,
-                                                                                  n_t,))
+        self.values =\
+            np.ctypeslib.as_array(shared_array_base.get_obj()).reshape((n_nu,
+                                                                        n_t,))
 
         nu = np.arange(n_nu)
         t = np.arange(n_t)
@@ -48,6 +102,7 @@ class Frame(object):
         self.t = self.t_0 + t * self.d_t
         self.t_end = self.t[-1]
         self.d_nu = d_nu
+        self.meta_data = MetaData(meta_data)
 
     @property
     def shape(self):
@@ -67,6 +122,7 @@ class Frame(object):
         assert self.values.shape == array.shape
         self.values += array
 
+    # FIXME: Handle start time in slices somehow
     def slice(self, t_start, t_stop):
         """
         Slice frame using specified fractions of time interval.
@@ -77,10 +133,12 @@ class Frame(object):
             Number [0, 1] - fraction of total time interval.
 
         :return:
-            Instance of ``Frame`` class.
+            Instance of ``DynSpectra`` class.
         """
-        frame = Frame(self.n_nu, int(round(self.n_t * (t_stop - t_start))),
-                      self.nu_0, self.d_nu, self.d_t, self.t_0)
+        assert t_start < t_stop
+        frame = DynSpectra(self.n_nu, int(round(self.n_t * (t_stop - t_start))),
+                           self.nu_0, self.d_nu, self.d_t,
+                           meta_data=self.meta_data, t_0=self.t_0)
         frame.add_values(self.values[:, int(t_start * self.n_t): int(t_stop *
                                                                      self.n_t)])
         return frame
@@ -212,7 +270,7 @@ class Frame(object):
 
         :param t_0:
             Arrival time of pulse at highest frequency channel [s]. Counted
-            from start time of ``Frame`` instance.
+            from start time of ``DynSpectra`` instance.
         :param amp:
             Amplitude of pulse.
         :param width:
@@ -240,7 +298,7 @@ class Frame(object):
 
         :param t_0:
             Arrival time of pulse at highest frequency channel [s]. Counted
-            from start time of ``Frame`` instance.
+            from start time of ``DynSpectra`` instance.
         :param amp:
             Amplitude of pulse.
         :param width:
@@ -251,9 +309,6 @@ class Frame(object):
         """
         self.add_pulse(t_0, -amp, width, dm)
 
-    def save_to_txt(self, fname):
-        np.savetxt(fname, self.values.T)
-
     def add_noise(self, std):
         """
         Add noise to frame using specified rayleigh-distributed noise.
@@ -261,15 +316,16 @@ class Frame(object):
         :param std:
             Std of rayleigh-distributed uncorrelated noise.
         """
-        noise = np.random.rayleigh(std,
-                                   size=(self.n_t *
-                                         self.n_nu)).reshape(np.shape(self.values))
+        noise =\
+            np.random.rayleigh(std,
+                               size=(self.n_t *
+                                     self.n_nu)).reshape(np.shape(self.values))
         self.values += noise
 
-    # TODO: Check optimal value of ``dm_delta``
     def create_dm_grid(self, dm_min, dm_max, dm_delta=None):
         """
         Method that create DM-grid for current frame.
+
         :param dm_min:
             Minimal value [cm^3 /pc].
         :param dm_max:
@@ -286,7 +342,7 @@ class Frame(object):
 
     def grid_dedisperse(self, dm_grid, threads=1):
         """
-        Method that de-disperse ``Frame`` instance with range values of
+        Method that de-disperse ``DynSpectra`` instance with range values of
         dispersion measures and average them in frequency to obtain image in
         (t, DM)-plane.
 
@@ -318,51 +374,89 @@ class Frame(object):
 
         return frames
 
-
-class DynSpectra(Frame):
-    """
-    :param meta_data:
-        Dictionary with metadata describing current dynamical spectra. It must
-        include ``exp_name`` [string], ``antenna`` [string], ``freq`` [string],
-        ``band`` [string], ``pol`` [string] keys.
-
-        Eg. {'exp_name': 'raks03ra', 'antenna': 'AR'. 'freq': 'L', 'band': 'U',
-        'pol': 'L'}
-    """
-    def __init__(self, n_nu, n_t, nu_0, d_nu, d_t, meta_data, t_0=None):
-        super(DynSpectra, self).__init__(n_nu, n_t, nu_0, d_nu, d_t, t_0=t_0)
-        self.meta_data = meta_data
-
-    def slice(self, t_start, t_stop):
+    def save_to_hdf5(self, fname, name='dsp'):
         """
-        Slice frame using specified fractions of time interval.
+        Save data to HDF5 format.
 
-        :param t_start:
-            Number [0, 1] - fraction of total time interval.
-        :param t_stop:
-            Number [0, 1] - fraction of total time interval.
+        :param fname:
+            File to save data.
+        :param name: (optional)
+            Name of dataset to use. (default: ``dsp``)
 
-        :return:
-            Instance of ``Frame`` class.
+        :note:
+            HDF5 hasn't time formats. Using ``str(datetime)`` to create strings
+            with microseconds.
         """
-        frame = DynSpectra(self.n_nu, int(round(self.n_t * (t_stop - t_start))),
-                           self.nu_0, self.d_nu, self.d_t, self.meta_data,
-                           self.t_0)
-        frame.add_values(self.values[:, int(t_start * self.n_t): int(t_stop *
-                                                                     self.n_t)])
-        return frame
+        import h5py
+        f = h5py.File(fname, "w")
+        dset = f.create_dataset(name, data=self.values, chunks=True,
+                                compression='gzip')
+        meta_data = self.meta_data.copy()
+        meta_data.update({'n_nu': self.n_nu, 'n_t': self.n_t, 'nu_0': self.nu_0,
+                          'd_nu': self.d_nu, 'd_t': self.d_t.sec,
+                          't_0': str(self.t_0)})
+        for key, value in meta_data.items():
+            dset.attrs[key] = value
+        f.flush()
+        f.close()
 
-
-def create_from_txt(fname, nu_0, d_nu, d_t, meta_data, t_0=None, n_nu_discard=0):
+def create_from_hdf5(fname, name='dsp', n_nu_discard=0):
     """
-    Function that creates instance of ``Frame`` class from text file.
+    Function that creates instance of ``DynSpectra`` class from HDF5-file.
+
+    :param fname:
+        Name of HDF5-file with `dsp` data set that is 2D numpy.ndarray with rows
+        representing frequency channels and columns - 1d-time series of data for
+        each frequency channel and meta-data.
+    :param name: (optional)
+        Name of dataset to use. (default: ``dsp``)
+    :param n_nu_discard: (optional)
+        NUmber of spectral channels to discard symmetrically from both low and
+         high frequency.
+
+    :return:
+        Instance of ``DynSpectra`` class.
+    """
+    data, meta_data = read_hdf5(fname, name)
+    n_nu = meta_data.pop('n_nu')
+    n_t = meta_data.pop('n_t')
+    nu_0 = meta_data.pop('nu_0')
+    d_nu = meta_data.pop('d_nu')
+    d_t = meta_data.pop('d_t')
+    t_0 = Time(meta_data.pop('t_0'))
+    dsp = DynSpectra(n_nu - n_nu_discard, n_t, nu_0 - n_nu_discard * d_nu / 2.,
+                     d_nu, d_t, meta_data, t_0=t_0)
+    dsp.add_values(data)
+    return dsp
+
+
+def create_from_txt(fname, nu_0, d_nu, d_t, meta_data, t_0=None,
+                    n_nu_discard=0):
+    """
+    Function that creates instance of ``DynSpectra`` class from text file.
 
     :param fname:
         Name of txt-file with rows representing frequency channels and columns -
         1d-time series of data for each frequency channel.
+    :param nu_0:
+        Frequency of highest frequency channel [MHz].
+    :param d_nu:
+        Width of spectral channel [MHz].
+    :param d_t:
+        Time step [s].
+    :param meta_data:
+        Dictionary with metadata describing current dynamical spectra. It must
+        include ``exp_name`` [string], ``antenna`` [string], ``freq`` [string],
+        ``band`` [string], ``pol`` [string] keys.
+    :param t_0: (optional)
+        Time of first measurement. Instance of ``astropy.time.Time`` class. If
+        ``None`` then use time of initialization. (default: ``None``)
+    :param n_nu_discard: (optional)
+        NUmber of spectral channels to discard symmetrically from both low and
+         high frequency.
 
     :return:
-        Instance of ``Frame`` class.
+        Instance of ``DynSpectra`` class.
     """
     assert not int(n_nu_discard) % 2
 
@@ -371,30 +465,36 @@ def create_from_txt(fname, nu_0, d_nu, d_t, meta_data, t_0=None, n_nu_discard=0)
     except IOError:
         values = np.loadtxt(fname, unpack=True)
     n_nu, n_t = np.shape(values)
-    frame = DynSpectra(n_nu - n_nu_discard, n_t,
-                       nu_0 - n_nu_discard * d_nu / 2.,
-                       d_nu, d_t, meta_data, t_0=t_0)
+    dsp = DynSpectra(n_nu - n_nu_discard, n_t, nu_0 - n_nu_discard * d_nu / 2.,
+                     d_nu, d_t, meta_data=meta_data, t_0=t_0)
     if n_nu_discard:
-        frame.values += values[n_nu_discard / 2: -n_nu_discard / 2, :]
+        dsp.values += values[n_nu_discard / 2: -n_nu_discard / 2, :]
     else:
-        frame.values += values
+        dsp.values += values
 
-    return frame
+    return dsp
 
 
 if __name__ == '__main__':
-    # print "Creating frame"
-    # frame = Frame(256, 12000, 1684., 16./256, 1./1000)
-    # print "Adding pulse"
-    # frame.add_pulse(1., 0.1, 0.003, 100.)
-    # frame.add_pulse(2., 0.09, 0.003, 200.)
-    # frame.add_pulse(3., 0.08, 0.003, 300.)
-    # frame.add_pulse(4., 0.07, 0.003, 500.)
-    # frame.add_pulse(5., 0.06, 0.003, 700.)
-    # print "Adding noise"
-    # frame.add_noise(0.5)
+    # Creating fake dynamical spectra
+    dsp = DynSpectra(128, 12000, 1684., 16. / 256, 1. / 1000,
+                     meta_data={'antenna': 'RA', 'exp_code': 'raks100',
+                                  'freq': 'l', 'band': 'u', 'pol': 'r'})
+    dsp.add_pulse(1., 0.2, 0.003, 100.)
+    dsp.add_pulse(2., 0.2, 0.003, 200.)
+    dsp.add_pulse(3., 0.2, 0.003, 300.)
+    dsp.add_pulse(4., 0.2, 0.003, 500.)
+    dsp.add_pulse(5., 0.2, 0.003, 700.)
+    dsp.add_noise(0.2)
+    # Reading from txt
     txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
-    frame = create_from_txt(txt, 1684., 16./128, 0.001)
-    # fr1 = frame.slice(0, 0.1)
-    # fr2 = frame.slice(0.1, 0.9)
-    # fr3 = frame.slice(0.9, 1)
+    dsp_t = create_from_txt(txt, 1684., 16. / 128, 0.001,
+                            meta_data={'antenna': 'RA', 'exp_code': 'raks100',
+                                         'freq': 'l', 'band': 'u', 'pol': 'r'})
+    # Slicing
+    dsp1 = dsp_t.slice(0, 0.1)
+    dsp2 = dsp_t.slice(0.1, 0.9)
+    dsp3 = dsp_t.slice(0.9, 1)
+    # Saving/reading HDF5
+    dsp_t.save_to_hdf5('test.hdf5')
+    new_dsp = create_from_hdf5('test.hdf5')

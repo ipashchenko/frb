@@ -9,7 +9,7 @@ def de_disperse_cumsum(dsp, dm_values):
     De-disperse dynamical spectra with grid of user specifies values of DM.
 
     :param dsp:
-        Instance of ``Frame`` class.
+        Instance of ``DynSpectra`` class.
     :param dm_values:
         Array-like of DM values to de-disperse [cm^3 /pc].
 
@@ -29,7 +29,7 @@ def noncoherent_dedisperse(dsp, dm_grid, threads=1):
     measures and average them in frequency to obtain image in (t, DM)-plane.
 
     :param dsp:
-        Instance of ``Frame`` class.
+        Instance of ``DynSpectra`` class.
     :param dm_grid:
         Array-like of value of DM on which to de-disperse [cm^3/pc].
     :param threads: (optional)

@@ -45,6 +45,7 @@ def get_cfx(cfx_path, code):
         sorted(band_list, key=lambda x: CFX(x).version())[-1]))
     return last_ver
 
+# TODO: Check if file exists in constructor
 class CFX(object):
     def __init__(self, cfile):
         self.cfile = cfile

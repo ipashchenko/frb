@@ -2,7 +2,7 @@ import multiprocessing
 import ctypes
 import numpy as np
 import pickle_method
-from utils import vint, vround, save_hdf5, read_hdf5
+from utils import vint, vround, read_hdf5
 from astropy.time import Time, TimeDelta
 
 try:
@@ -75,15 +75,13 @@ class DynSpectra(object):
         Dictionary with metadata describing current dynamical spectra. It must
         include ``exp_code`` [string], ``antenna`` [string], ``freq`` [string],
         ``band`` [string], ``pol`` [string] keys.
-        Eg. {'exp_name': 'raks03ra', 'antenna': 'AR'. 'freq': 'L', 'band': 'U',
-        'pol': 'L'}
+        Eg. ``{'exp_code': 'raks03ra', 'antenna': 'AR', 'freq': 'l', 'band': 'u',
+        'pol': 'r'}``
     :param t_0: (optional)
         Time of first measurement. Instance of ``astropy.time.Time`` class. If
         ``None`` then use time of initialization. (default: ``None``)
 
     """
-
-
     def __init__(self, n_nu, n_t, nu_0, d_nu, d_t, meta_data=None, t_0=None):
         self.n_nu = n_nu
         self.n_t = n_t

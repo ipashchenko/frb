@@ -179,7 +179,7 @@ class PulseClassifier(object):
         scaler = StandardScaler().fit(X)
         self.scaler = scaler
         X_scaled = scaler.transform(X)
-        self._clf.fit(X_scaled, y)
+        # self._clf.fit(X_scaled, y)
 
         # C_range = np.logspace(-2, 10, 13)
         # gamma_range = np.logspace(-9, 3, 13)
@@ -190,14 +190,17 @@ class PulseClassifier(object):
 
         # print("The best parameters are %s with a score of %0.2f"
         #       % (grid.best_params_, grid.best_score_))
-        # param_grid = {'learning_rate': [0.3, 0.1, 0.05, 0.01],
-        #               'max_depth': [3, 4, 6],
-        #               'min_samples_leaf': [2, 3, 9, 17],
-        #               'max_features': [1.0, 0.3, 0.1]}
+        param_grid = {'learning_rate': [0.3, 0.1, 0.05, 0.01],
+                      'max_depth': [3, 4, 6],
+                      'min_samples_leaf': [2, 3, 9, 17],
+                      'max_features': [1.0, 0.5, 0.2]}
         # est = GradientBoostingClassifier(n_estimators=3000)
-        # gs_cv = GridSearchCV(est, param_grid, n_jobs=4).fit(X_scaled, y)
+        gs_cv = GridSearchCV(self._clf, param_grid, n_jobs=4).fit(X_scaled, y)
+        print("The best parameters are %s with a score of %0.2f"
+              % (gs_cv.best_params_, gs_cv.best_score_))
         # print gs_cv.best_params_
-        # est = GradientBoostingClassifier(n_estimators=3000, **gs_cv.best_params_)
+        self._clf = GradientBoostingClassifier(n_estimators=3000, **gs_cv.best_params_)
+        self._clf.fit(X_scaled, y)
         # est.fit(X_scaled, y)
         # pass
 

@@ -1,5 +1,7 @@
 import os
 import numpy as np
+from astropy.time import TimeDelta
+from dyn_spectra import DynSpectra
 from cfx import CFX
 from raw_data import M5, dspec_cat
 from queries import connect_to_db, query_frb
@@ -21,7 +23,8 @@ class SearchExperiment(object):
             Path to experiment CFX file.
         :param dsp_params:
             Parameters of dynamical spectra to create. Dictionary with the
-            following keys: `nchan` [ex. 64], `dt` [ms].
+            following keys: ``n_nu`` [ex. 64], ``nu_0`` [MHz], ``d_t``  [s],
+            ``d_nu`` [MHz].
         :param raw_data_dir:
             Directory with subdirectories that contains raw data for all
             antennas.
@@ -42,7 +45,7 @@ class SearchExperiment(object):
         """
         return self.cfx.parse_cfx(self.exp_code)
 
-    def dsp_generator(self, m5_file, m5_params):
+    def dsp_generator(self, m5_file, m5_params, chunk_size=100.):
         """
         Generator that returns instances of ``DynSpectra`` class.
 
@@ -50,8 +53,36 @@ class SearchExperiment(object):
             Raw data file in M5 format.
         :param m5_params:
             Dictionary with meta data.
+        :param chunk_size: (optional)
+            Size (in s) of chunks to process raw data. (default: ``100.``)
         """
         raise NotImplementedError
+        dsp_params = self.dsp_params
+        dsp_params.update({'offset': 0., 'outfile': None, 'dur': chunk_size})
+        m5file_fmt = m5_params[2]
+        cfx_fmt = m5_params[-1]
+        m5 = M5(m5_file, m5file_fmt)
+        offset = 0
+
+        while offst * 32e6 < m5.size:
+            dsp_params.update({'offst': offst})
+            ds = m5.create_dspec(**dspec_params)
+
+            # NOTE: all 4 channels are stacked forming dsarr:
+            dsarr = raw_data.dspec_cat(os.path.basename(ds['Dspec_file']),
+                                       cfx_fmt)
+            metadata = ds
+            metadata['Raw_data_file'] = m5_file
+            metadata['Exp_data'] = m5_params
+            t_0 = m5.start_time + TimeDelta(offset, format='sec')
+
+            dsp = DynSpectra(dsp_params['n_nu'],
+                             int(chunk_size/dsp_params['d_t']),
+                             dsp_params['nu_0'], dsp_params['d_nu'],
+                             dsp_params['d_t'], meta_data=metadata, t_0=t_0)
+            offset = offset + chunk_size
+
+            yield dsp
 
     # TODO: Add checking DB if searching for FRBs with the same set of
     # de-dispersion + pre-processing + searching parameters was already done
@@ -110,9 +141,9 @@ class SearchExperiment(object):
 
 
 if __name__ == '__main__':
-    exp_code = 'raks12er'
-    cfx_file = '/home/ilya/code/frb/GVLBI_RAKS12ER_L_20151105T130000_ASC_V1.cfx'
-    raw_data_dir = '/mnt/frb_data/raw_data/2015_309_raks12er/'
+    exp_code = 'raks12ec'
+    cfx_file = '/home/ilya/code/frb/frb/RADIOASTRON_RAKS12EC_C_20151030T210000_ASC_V1.cfx'
+    raw_data_dir = '/mnt/frb_data/raw_data/2015_303_raks12ec'
     db_file = '/home/ilya/code/frb/frb/frb.db'
     # Step used in de-dispersion
     d_dm = 30.
@@ -139,7 +170,9 @@ if __name__ == '__main__':
                      'kwargs': search_kwargs}
 
     # Create pipeline
-    pipeline = SearchExperiment(exp_code, cfx_file, raw_data_dir, db_file)
+    dsp_params = {'n_nu': 64, 'nu_0': 4836., 'd_t': 0.001}
+    pipeline = SearchExperiment(exp_code, cfx_file, dsp_params, raw_data_dir,
+                                db_file)
     # Run pipeline with given parameters
     pipeline.run(de_disp_params, pre_process_params, search_params)
 

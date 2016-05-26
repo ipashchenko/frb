@@ -398,6 +398,7 @@ class DynSpectra(object):
         f.flush()
         f.close()
 
+
 def create_from_hdf5(fname, name='dsp', n_nu_discard=0):
     """
     Function that creates instance of ``DynSpectra`` class from HDF5-file.

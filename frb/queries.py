@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import (aliased, sessionmaker)
 from sqlalchemy.sql import func

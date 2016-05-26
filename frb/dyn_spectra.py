@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import multiprocessing
 import ctypes
 import numpy as np

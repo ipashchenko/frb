@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from astropy.time import Time, TimeDelta
 from frb.dyn_spectra import create_from_txt

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import copy_reg
 import types
 
@@ -7,6 +8,7 @@ def _pickle_method(method):
     obj = method.im_self
     cls = method.im_class
     return _unpickle_method, (func_name, obj, cls)
+
 
 def _unpickle_method(func_name, obj, cls):
     for cls in cls.mro():

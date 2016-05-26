@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 import astropy.io.fits as pf
 from astropy.time import Time

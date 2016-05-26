@@ -102,6 +102,15 @@ class DynSpectra(object):
         self.d_nu = d_nu
         self.meta_data = MetaData(meta_data)
 
+    def __repr__(self):
+        outprint = "# channels: {}\n".format(self.n_nu)
+        outprint += "# times: {}\n".format(self.n_t)
+        outprint += "Max. freq. [MHz]: {}\n".format(self.nu_0)
+        outprint += "Freq. spacing [MHz]: {}\n".format(self.d_nu)
+        outprint += "Time spacing [s]: {}\n".format(self.d_t.sec)
+        outprint += "Start time: {}\n".format(str(self.t_0))
+        return outprint
+
     @property
     def shape(self):
         """

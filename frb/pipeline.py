@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from astropy.time import TimeDelta
+from collections import defaultdict
 from dyn_spectra import DynSpectra
 from cfx import CFX
 from raw_data import M5, dspec_cat
@@ -56,7 +57,6 @@ class SearchExperiment(object):
         :param chunk_size: (optional)
             Size (in s) of chunks to process raw data. (default: ``100.``)
         """
-        raise NotImplementedError
         dsp_params = self.dsp_params
         dsp_params.update({'offset': 0., 'outfile': None, 'dur': chunk_size})
         m5file_fmt = m5_params[2]
@@ -64,13 +64,13 @@ class SearchExperiment(object):
         m5 = M5(m5_file, m5file_fmt)
         offset = 0
 
-        while offst * 32e6 < m5.size:
-            dsp_params.update({'offst': offst})
-            ds = m5.create_dspec(**dspec_params)
+        while offset * 32e6 < m5.size:
+            dsp_params.update({'offst': offset})
+            ds = m5.create_dspec(**dsp_params)
 
             # NOTE: all 4 channels are stacked forming dsarr:
-            dsarr = raw_data.dspec_cat(os.path.basename(ds['Dspec_file']),
-                                       cfx_fmt)
+            dsarr = dspec_cat(os.path.basename(ds['Dspec_file']),
+                              cfx_fmt)
             metadata = ds
             metadata['Raw_data_file'] = m5_file
             metadata['Exp_data'] = m5_params
@@ -80,7 +80,8 @@ class SearchExperiment(object):
                              int(chunk_size/dsp_params['d_t']),
                              dsp_params['nu_0'], dsp_params['d_nu'],
                              dsp_params['d_t'], meta_data=metadata, t_0=t_0)
-            offset = offset + chunk_size
+            dsp.add_values(dsarr)
+            offset += offset
 
             yield dsp
 
@@ -112,6 +113,9 @@ class SearchExperiment(object):
             Argument dictionaries should have keys: 'func', 'args', 'kwargs'
             with corresponding values passed to ``Searcher.run`` method.
         """
+        # Dict with keys - antennas & values - list of ``Candidate`` instances
+        # for given antenna detected.
+        exp_candidates = defaultdict(list)
         for m5_file, m5_params in self.exp_params.items():
             m5_antenna = m5_params['antenna']
             if antenna and antenna != m5_antenna:
@@ -131,13 +135,9 @@ class SearchExperiment(object):
                                           preprocess_args=pre_process_params['args'],
                                           preprocess_kwargs=pre_process_params['kwargs'],
                                           db_file=self.db_file)
-
-        session = connect_to_db(self.db_file)
-        # Query DB
-        frb_list = query_frb(session, self.exp_code, d_dm=200., d_t=0.1)
-        print "Found FRBs:"
-        for frb in frb_list:
-            print frb
+                if candidates:
+                    exp_candidates[dsp.meta_data['antenna']].extend(candidates)
+        return exp_candidates
 
 
 if __name__ == '__main__':
@@ -174,7 +174,15 @@ if __name__ == '__main__':
     pipeline = SearchExperiment(exp_code, cfx_file, dsp_params, raw_data_dir,
                                 db_file)
     # Run pipeline with given parameters
-    pipeline.run(de_disp_params, pre_process_params, search_params)
+    candidates_dict = pipeline.run(de_disp_params, pre_process_params,
+                                   search_params)
+
+    session = connect_to_db(db_file)
+    # Query DB
+    frb_list = query_frb(session, exp_code, d_dm=200., d_t=0.1)
+    print "Found FRBs:"
+    for frb in frb_list:
+        print frb
 
 
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from astropy.time import Time, TimeDelta
 from frb.dyn_spectra import create_from_txt
@@ -80,16 +81,58 @@ print "Found {} candidates".format(len(candidates))
 for candidate in candidates:
     print candidate
 
-print "using ``search_candidates_clf`` search function..."
+# print "using ``search_candidates_clf`` search function with SVM..."
+# # ICreate classifier class instance
+# pclf = PulseClassifier(de_disperse_cumsum, create_ellipses,
+#                        de_disp_args=[dm_grid],
+#                        preprocess_kwargs={'disk_size': 3,
+#                                           'threshold_big_perc': 97.5,
+#                                           'threshold_perc': 97.5,
+#                                           'statistic': 'mean'},
+#                        clf_kwargs={'kernel': 'rbf', 'probability': True,
+#                                    'class_weight': 'balanced'})
+# dsp_training = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data,
+#                                t_0=Time.now())
+# dsp_training = dsp_training.slice(0.2, 0.5)
+#
+# # Generate values of pulses in training sample
+# print "Creating training sample"
+# n_training_pulses = 50
+# amps = np.random.uniform(0.15, 0.25, size=n_training_pulses)
+# widths = np.random.uniform(0.001, 0.003, size=n_training_pulses)
+# dm_values = np.random.uniform(100, 500, size=n_training_pulses)
+# times = np.linspace(0, 30, n_training_pulses+2)[1: -1]
+# features_dict, responses_dict = pclf.create_samples(dsp_training, amps,
+#                                                     dm_values, widths)
+# # print "Training classifier"
+# pclf.train(features_dict, responses_dict)
+#
+# print "Searching FRBs in actual data"
+# # Note using the same arguments as in training classifier
+# candidates = searcher.run(de_disp_func=pclf.de_disp_func,
+#                           search_func=search_candidates_clf,
+#                           preprocess_func=pclf.preprocess_func,
+#                           de_disp_args=pclf.de_disp_args,
+#                           preprocess_kwargs=pclf.preprocess_kwargs,
+#                           search_args=[pclf],
+#                           search_kwargs={'d_dm': d_dm,
+#                                          'save_fig': True})
+# print "Found {} candidates".format(len(candidates))
+# for candidate in candidates:
+#     print candidate
+
+print "using ``search_candidates_clf`` search function with GBC..."
 # ICreate classifier class instance
+from sklearn.ensemble import GradientBoostingClassifier
 pclf = PulseClassifier(de_disperse_cumsum, create_ellipses,
+                       clf=GradientBoostingClassifier,
+                       clf_kwargs={'verbose': 1, 'n_estimators': 3000,
+                                   'learning_rate': 0.01},
                        de_disp_args=[dm_grid],
                        preprocess_kwargs={'disk_size': 3,
                                           'threshold_big_perc': 97.5,
                                           'threshold_perc': 97.5,
-                                          'statistic': 'mean'},
-                       clf_kwargs={'kernel': 'rbf', 'probability': True,
-                                   'class_weight': 'balanced'})
+                                          'statistic': 'mean'})
 dsp_training = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data,
                                t_0=Time.now())
 dsp_training = dsp_training.slice(0.2, 0.5)

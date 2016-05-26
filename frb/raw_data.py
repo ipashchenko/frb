@@ -55,11 +55,11 @@ class M5(object):
     def __repr__(self):
         """ Show some info about the m5file """
         outprint = "File: %s\n" % self.m5file
-        outprint = outprint.join("Format: %s\n" % self.fmt)
-        outprint = outprint.join("File size: %s\n" % self.size)
-        outprint = outprint.join("File start MJD/time: %s\n" % self.starttime)
-        outprint = outprint.join("Last modified: %s\n" %
-                                 time.ctime(os.path.getmtime(self.m5file)))
+        outprint += "Format: %s\n" % self.fmt
+        outprint += "File size: %s\n" % self.size
+        outprint += "File start MJD/time: %s\n" % self.starttime
+        outprint += "Last modified: %s\n" %\
+                    time.ctime(os.path.getmtime(self.m5file))
         return outprint
 
     def show_aspec(self, t0=0, nchan=128, nusr=125, chid=2):

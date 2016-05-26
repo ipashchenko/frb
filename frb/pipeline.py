@@ -149,7 +149,7 @@ class SearchExperiment(object):
                                           de_disp_args=de_disp_params.get('args', []),
                                           de_disp_kwargs=de_disp_params.get('kwargs', {}),
                                           search_args=search_params.get('args', []),
-                                          search_kwargs=search_params.get('kwargs', {})[0],
+                                          search_kwargs=search_params.get('kwargs', {}),
                                           preprocess_args=pre_process_params.get('args', []),
                                           preprocess_kwargs=pre_process_params.get('kwargs', {}),
                                           db_file=self.db_file)
@@ -174,7 +174,7 @@ if __name__ == '__main__':
                      'theta_lims': [130., 180.],
                      'x_cos_theta': 3.,
                      'd_dm': d_dm,
-                     'amplitude': 3},
+                     'amplitude': 3}
     # Arguments for pre-processing function
     preprocess_kwargs = {'disk_size': 3,
                          'threshold_big_perc': 90.,

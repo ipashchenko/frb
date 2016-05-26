@@ -11,11 +11,10 @@ import matplotlib.pyplot as plt
 import subprocess
 import time
 import re
-from astropy.time import Time
+from astropy.time import Time, TimeDelta
 
 
 my5spec = "../my5spec/./my5spec"
-dspec_path = '/home/osh/frb_test/dspec'
 
 
 class M5(object):
@@ -32,7 +31,7 @@ class M5(object):
         self.fmt = fmt
         if self.fmt is None:
             self.fmt = "Mark5B-256-4-2"
-            print "WARNING: fmt is not set" #Trying Mark5B-256-4-2
+            print "WARNING: fmt is not set"
             raise SystemExit('fmt is not set')
         self.my5spec = my5spec
         self.m5dir = os.path.dirname(os.path.abspath(self.m5file))
@@ -76,20 +75,23 @@ class M5(object):
         plt.show()
         os.remove(tmpfile)
 
-    def create_dspec(self, nchan=64, dt=1, offst=0, dur=None, outfile=None):
+    def create_dspec(self, n_nu=64, d_t=1, offset=0, dur=None, outfile=None,
+                     dspec_path=None, **kwargs):
         """
         Create 4 DS files for selected M5datafile with nchan, dt[ms], ...
         The input options are the same as for my5spec
         """
+        if dspec_path is None:
+            dspec_path = os.getcwd()
 # my5spec options:
-        opt1 = "-a %s " % dt
-        opt2 = "-n %s " % nchan
+        opt1 = "-a %s " % d_t
+        opt2 = "-n %s " % n_nu
         if dur is not None:
-            opt3 = "-l %s " % dur  # duration (time limit)
+            opt3 = "-l %s " % dur
         else:
             opt3 = ""
-        if offst != 0.0:
-            opt4 = "-o %s " % offst # offset (see my5spec)
+        if offset != 0.0:
+            opt4 = "-o %s " % offset
         else:
             opt4 = ""
         opts = opt1 + opt2 + opt3 + opt4
@@ -104,17 +106,17 @@ class M5(object):
         cmd = self.my5spec + " " + opts + "%s %s %s"\
                                           % (self.m5file, self.fmt, outfile)
         subprocess.check_call(cmd.split())
-        ds_start = self.start_time + offst / 86400.0
+        ds_start = self.start_time + TimeDelta(offset / 86400.0, format='sec')
 
-        res = {'Nchan': nchan,
-               'DT_ms': dt,
-               'Start_mjd': ds_start,
-               'Duration_sec': dur,
-               'Dspec_file': outfile}
+        # res = {'n_nu': n_nu,
+              #  'd_t': d_t,
+              #  't_0': ds_start,
+               # 'Duration_sec': dur,
+        res = {'Dspec_file': outfile}
         return res
 
 
-### extra manipulations with dspec files
+# extra manipulations with dspec files
 def get_cfx_format(fname, cfx_data):
     return cfx_data[fname][-1]
 
@@ -129,6 +131,8 @@ def dspec_cat(fname, cfx_fmt, pol=True, uplow=True, dspec_path=None):
     uplow - concat UPPER and LOWER bands\n
     OUTPUT: np.array
     """
+    if dspec_path is None:
+        dspec_path = os.getcwd()
     from utils import find_file
     flist = find_file(fname + '*_0?', dspec_path)
     if flist is None:
@@ -148,10 +152,3 @@ def dspec_cat(fname, cfx_fmt, pol=True, uplow=True, dspec_path=None):
         else:
             arr[:, ashape[1]:] = arr[:, ashape[1]:] + np.loadtxt(fil)
     return arr/2
-
-
-if __name__ == "__main__":
-    f = create_dspec()
-
-
-

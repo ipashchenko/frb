@@ -119,7 +119,7 @@ def get_cfx_format(fname, cfx_data):
     return cfx_data[fname][-1]
 
 
-def dspec_cat(fname, cfx_fmt, pol=True, uplow=True):
+def dspec_cat(fname, cfx_fmt, pol=True, uplow=True, dspec_path=None):
     """
     Concatenate dynamical spectra files, returning array.
     INPUTS:

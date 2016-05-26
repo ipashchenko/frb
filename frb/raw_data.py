@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import time
 import re
+from astropy.time import Time
 
 
 my5spec = "../my5spec/./my5spec"
@@ -42,17 +43,14 @@ class M5(object):
     def start_time(self):
         """ Determine start time for the m5file """
         cmd = "m5time " + self.m5file + " " + self.fmt
-        try:
-            res = subprocess.check_output(cmd.split())
-            res = re.search('\d{5}/\d{2}:\d{2}:\d{2}\.\d{2}', res).group()
-            m5_mjd = float(res.split('/')[0])
-            m5_hms = res.split('/')[1].split(':')
-            m5_time = float(m5_hms[0])/24.0 + float(m5_hms[1])/1440.0\
-                + float(m5_hms[2])/86400.0
-            res = m5_mjd + m5_time
-        except:
-            res = 0.0
-        return res
+        res = subprocess.check_output(cmd.split())
+        res = re.search('\d{5}/\d{2}:\d{2}:\d{2}\.\d{2}', res).group()
+        m5_mjd = float(res.split('/')[0])
+        m5_hms = res.split('/')[1].split(':')
+        m5_time = float(m5_hms[0])/24.0 + float(m5_hms[1])/1440.0\
+            + float(m5_hms[2])/86400.0
+        res = m5_mjd + m5_time
+        return Time(res, format='mjd')
 
     def __repr__(self):
         """ Show some info about the m5file """

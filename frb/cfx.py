@@ -85,7 +85,8 @@ class CFX(object):
                 files = re.findall('(?<=FILE.. = %P:)([\S]*)', block)
                 ifs = ' '.join(ifs)
                 ifs = re.sub('\, ', '-', ifs)
-                val1 = [code, tname.group(0), fmt.group(0), ifs.split()]
+                val1 = {'exp_code': code, 'antenna': tname.group(0),
+                        'm5_fmt': fmt.group(0), 'cfx_fmt': ifs.split()}
                 for f in files:
                     cfxdata.update({f:val1})
         return cfxdata

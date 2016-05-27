@@ -18,7 +18,7 @@ split_duration = 0.5
 
 cobj = CFX(cfx_file)
 cfx_data = cobj.parse_cfx(exp_code)
-if cobj.band() == 'K':
+if cobj.freq == 'K':
     print("Skipping K-band CFX file: {}".format(os.path.basename(cfx_file)))
     print("NOTE: You can delete following files from data path:")
     print(cfx_data)

@@ -54,7 +54,7 @@ class Searcher(object):
         date_1, time_1 = str(self.meta_data['t_end']).split(' ')
         return "{}_{}_{}_{}_{}_{}_{}".format(self.meta_data['exp_code'],
                                              self.meta_data['antenna'],
-                                             self.meta_data['band'], date_0,
+                                             self.meta_data['freq'], date_0,
                                              time_0, date_1, time_1)
 
     def de_disperse(self, de_disp_func, *args, **kwargs):

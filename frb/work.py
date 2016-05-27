@@ -31,8 +31,8 @@ print cfx_files
 for cfile in cfx_files:
     cobj = cfx.CFX(cfile)
     cfx_data = cobj.parse_cfx(code)
-    if cobj.band() == 'K':
-        print("Skipping K-band CFX file: {}".format(os.path.basename(cfile)))
+    if cobj.freq == 'K':
+        print("Skipping K-freq CFX file: {}".format(os.path.basename(cfile)))
         print("NOTE: You can delete following files from data path:")
         print(cfx_data)
         continue

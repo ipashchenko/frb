@@ -78,14 +78,14 @@ class SearchExperiment(object):
                               cfx_fmt)
             print "Shape dsarr ", dsarr.shape
             metadata = ds
-            # metadata['Raw_data_file'] = m5_file
-            # metadata['Exp_data'] = m5_params
             t_0 = m5.start_time + TimeDelta(offset, format='sec')
             print "t_0 : ", t_0.datetime
 
             metadata.pop('Dspec_file')
-            metadata.update({'antenna': 'WB', 'freq': 'l', 'band': 'u', 'pol':
-                             'r', 'exp_code': 'raks00'})
+            metadata.update({'antenna': dsp_params['antenna'],
+                             'freq': self.cfx.freq, 'band': dsp_params['band'],
+                             'pol': dsp_params['pol'],
+                             'exp_code': dsp_params['exp_code']})
             # FIXME: ``2`` means combining U&L bands.
             dsp = DynSpectra(2 * dsp_params['n_nu'], dsarr.shape[0],
                              dsp_params['nu_0'], dsp_params['d_nu'],

@@ -4,6 +4,7 @@
 import os, re, fnmatch
 #from config import config
 
+
 # TODO: move this func to tools/utils module
 def ra_code(string):
     """ find RA code in string """
@@ -25,6 +26,7 @@ def ra_code(string):
         code = c
     return code
 
+
 def get_cfx(cfx_path, code):
     """
     Get latest version cfx file(s) for given exp code.
@@ -37,7 +39,7 @@ def get_cfx(cfx_path, code):
     for fname in os.listdir(cfx_path):
         if fnmatch.fnmatch(fname.lower(), cfxpattern):
             cfx = CFX(fname)
-            cfx_bands.add(cfx.band())
+            cfx_bands.add(cfx.freq)
             cfxlist.append(fname)
     for band in cfx_bands:
         band_list = fnmatch.filter(cfxlist, '*_{}_*'.format(band))
@@ -45,11 +47,13 @@ def get_cfx(cfx_path, code):
         sorted(band_list, key=lambda x: CFX(x).version())[-1]))
     return last_ver
 
+
 # TODO: Check if file exists in constructor
 class CFX(object):
     def __init__(self, cfile):
         self.cfile = cfile
         self.fname = os.path.basename(self.cfile)
+
     def version(self):
         """get CFX version from file name"""
         a = re.search('(?<=_V)\d{1,2}', self.fname)
@@ -57,11 +61,13 @@ class CFX(object):
             return None
         else:
             return int(a.group())
-    def band(self):
-        """get CFX band (K, C, L, P) from file name"""
+
+    @property
+    def freq(self):
+        """get CFX freq (K, C, L, P) from file name"""
         a = re.search('(?<=_)[K,C,L,P]{1}(?<!_)', self.fname)
         if a is None:
-            return None
+            raise Exception("Can't determine frequency freq from CFX file")
         else:
             return a.group()
 
@@ -84,25 +90,13 @@ class CFX(object):
                 ifs = re.findall('(?<=IF = )([0-9\.]+\, [RL]\, [UL])', block)
                 files = re.findall('(?<=FILE.. = %P:)([\S]*)', block)
                 ifs = ' '.join(ifs)
+                freq = ifs[0]
+                pol = ifs[1]
+                band = ifs[2]
                 ifs = re.sub('\, ', '-', ifs)
                 val1 = {'exp_code': code, 'antenna': tname.group(0),
-                        'm5_fmt': fmt.group(0), 'cfx_fmt': ifs.split()}
+                        'm5_fmt': fmt.group(0), 'cfx_fmt': ifs.split(),
+                        'freq': freq, 'pol': pol, 'freq': band}
                 for f in files:
                     cfxdata.update({f:val1})
         return cfxdata
-
-#    def process(self):
-#        """ some manipulations: skip K-band, link files, ..."""
-#        cdat = self.parse_cfx(self, code)
-#        if self.band() == 'K':
-#            print("Skipping K-band CFX file: {}".format(os.path.basename(cfile)))
-#            print("NOTE: You can delete following files from data path:\n")
-#            print cfx_data.keys()
-#            return
-
-if __name__ == "__main__":
-    cfx_path = '/home/osh/frb_test/cfx'
-    code = 'raes03gb'
-    cfiles = get_cfx(cfx_path, code)
-    c = CFX(cfiles[1]).parse_cfx(code)
-    print c

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import time
 import re
-from astropy.time import Time, TimeDelta
+from astropy.time import Time
 
 
 my5spec = "../my5spec/./my5spec"
@@ -19,20 +19,13 @@ my5spec = "../my5spec/./my5spec"
 
 class M5(object):
     """ working with raw data """
-# TODO:
-# 1. get file format
-# 2. by format get start times
-# 3. add chan_id when parsing (Petya)
-# 4. add scanning for new files
-# 5. output Dspec to FITS (?)
-
     def __init__(self, m5file, fmt=None):
         self.m5file = m5file
         self.fmt = fmt
         if self.fmt is None:
             self.fmt = "Mark5B-256-4-2"
             print "WARNING: fmt is not set"
-            raise SystemExit('fmt is not set')
+            raise Exception('fmt is not set')
         self.my5spec = my5spec
         self.m5dir = os.path.dirname(os.path.abspath(self.m5file))
         self.size = os.path.getsize(self.m5file)
@@ -83,36 +76,34 @@ class M5(object):
         """
         if dspec_path is None:
             dspec_path = os.getcwd()
-# my5spec options:
+
+        # my5spec options:
         opt1 = "-a %s " % d_t
         opt2 = "-n %s " % n_nu
+
         if dur is not None:
             opt3 = "-l %s " % dur
         else:
             opt3 = ""
+
         if offset != 0.0:
             opt4 = "-o %s " % offset
         else:
             opt4 = ""
+
         opts = opt1 + opt2 + opt3 + opt4
+
         if not outfile:
             opts2 = re.sub("-", "", "".join(opts.split()))
             outfile = os.path.join(dspec_path,
                                    os.path.basename(self.m5file).split('.')[0] +
                                    '_' + opts2 + "_dspec")
 
-# Usage: "my5spec [-a aver_time] [-n nchan] [-l time_limit] [-o offset]
-#         INFILE FORMAT OUTFILE"
         cmd = self.my5spec + " " + opts + "%s %s %s"\
                                           % (self.m5file, self.fmt, outfile)
         subprocess.check_call(cmd.split())
-        ds_start = self.start_time + TimeDelta(offset / 86400.0, format='sec')
-
-        # res = {'n_nu': n_nu,
-              #  'd_t': d_t,
-              #  't_0': ds_start,
-               # 'Duration_sec': dur,
         res = {'Dspec_file': outfile}
+
         return res
 
 
@@ -136,13 +127,11 @@ def dspec_cat(fname, cfx_fmt, pol=True, uplow=True, dspec_path=None):
     from utils import find_file
     flist = find_file(fname + '*_0?', dspec_path)
     if flist is None:
-        print "dspec_cat: Can't find files matching %s" % fname
-        return
+        raise Exception("dspec_cat: Can't find files matching %s" % fname)
     if len(flist) > len(cfx_fmt):
-        print "WARNING! dspec_cat: There are difference in files number" \
-              " and CFX-format length. Taking 1st 4 files:"
-        flist = flist[:4]
-# FIXME: improve the above checkings
+        raise Exception("WARNING! dspec_cat: There are difference in files"
+                        " number and CFX-format length")
+    # FIXME: improve the above checkings
     flist = sorted(flist, key=lambda x: int(x[-2:]))
     ashape = np.loadtxt(flist[0]).shape
     arr = np.zeros((ashape[0], ashape[1]*2))

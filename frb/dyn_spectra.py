@@ -76,8 +76,8 @@ class DynSpectra(object):
         Dictionary with metadata describing current dynamical spectra. It must
         include ``exp_code`` [string], ``antenna`` [string], ``freq`` [string],
         ``band`` [string], ``pol`` [string] keys.
-        Eg. ``{'exp_code': 'raks03ra', 'antenna': 'AR', 'freq': 'l', 'band': 'u',
-        'pol': 'r'}``
+        Eg. ``{'exp_code': 'raks03ra', 'antenna': 'AR', 'freq': 'l',
+        'band': 'u', 'pol': 'r'}``
     :param t_0: (optional)
         Time of first measurement. Instance of ``astropy.time.Time`` class. If
         ``None`` then use time of initialization. (default: ``None``)
@@ -482,28 +482,3 @@ def create_from_txt(fname, nu_0, d_nu, d_t, meta_data, t_0=None,
         dsp.values += values
 
     return dsp
-
-
-if __name__ == '__main__':
-    # Creating fake dynamical spectra
-    dsp = DynSpectra(128, 12000, 1684., 16. / 256, 1. / 1000,
-                     meta_data={'antenna': 'RA', 'exp_code': 'raks100',
-                                  'freq': 'l', 'band': 'u', 'pol': 'r'})
-    dsp.add_pulse(1., 0.2, 0.003, 100.)
-    dsp.add_pulse(2., 0.2, 0.003, 200.)
-    dsp.add_pulse(3., 0.2, 0.003, 300.)
-    dsp.add_pulse(4., 0.2, 0.003, 500.)
-    dsp.add_pulse(5., 0.2, 0.003, 700.)
-    dsp.add_noise(0.2)
-    # Reading from txt
-    txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
-    dsp_t = create_from_txt(txt, 1684., 16. / 128, 0.001,
-                            meta_data={'antenna': 'RA', 'exp_code': 'raks100',
-                                         'freq': 'l', 'band': 'u', 'pol': 'r'})
-    # Slicing
-    dsp1 = dsp_t.slice(0, 0.1)
-    dsp2 = dsp_t.slice(0.1, 0.9)
-    dsp3 = dsp_t.slice(0.9, 1)
-    # Saving/reading HDF5
-    dsp_t.save_to_hdf5('test.hdf5')
-    new_dsp = create_from_hdf5('test.hdf5')

@@ -85,9 +85,9 @@ class SearchExperiment(object):
 
             metadata.pop('Dspec_file')
             metadata.update({'antenna': 'WB', 'freq': 'l', 'band': 'u', 'pol':
-                              'r', 'exp_code': 'raks00'})
-            dsp = DynSpectra(2 * dsp_params['n_nu'],
-                             1000 * int(chunk_size/dsp_params['d_t']),
+                             'r', 'exp_code': 'raks00'})
+            # FIXME: ``2`` means combining U&L bands.
+            dsp = DynSpectra(2 * dsp_params['n_nu'], dsarr.shape[0],
                              dsp_params['nu_0'], dsp_params['d_nu'],
                              0.001 * dsp_params['d_t'], meta_data=metadata,
                              t_0=t_0)
@@ -193,7 +193,7 @@ if __name__ == '__main__':
                                 db_file)
     # Run pipeline with given parameters
     candidates_dict = pipeline.run(de_disp_params, pre_process_params,
-                                   search_params, chunk_size=100.)
+                                   search_params, chunk_size=100)
 
     session = connect_to_db(db_file)
     # Query DB

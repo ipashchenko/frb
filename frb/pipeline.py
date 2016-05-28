@@ -83,8 +83,9 @@ class SearchExperiment(object):
 
             metadata.pop('Dspec_file')
             metadata.update({'antenna': m5_params['antenna'],
-                             'freq': self.cfx.freq, 'band': m5_params['band'],
-                             'pol': m5_params['pol'],
+                             'freq': self.cfx.freq,
+                             'band': "".join(m5_params['band']),
+                             'pol': "".join(m5_params['pol']),
                              'exp_code': m5_params['exp_code']})
             # FIXME: ``2`` means combining U&L bands.
             dsp = DynSpectra(2 * dsp_params['n_nu'], dsarr.shape[0],

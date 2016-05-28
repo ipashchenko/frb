@@ -5,6 +5,7 @@ from scipy.ndimage.morphology import generate_binary_structure
 from skimage.measure import regionprops
 from skimage.morphology import opening
 from candidates import Candidate
+from utils import find_clusters_ell_amplitudes
 from astropy.time import TimeDelta
 from astropy.modeling import models, fitting
 import matplotlib.pyplot as plt
@@ -145,9 +146,9 @@ def search_candidates(image, n_d_x, n_d_y, t_0, d_t, d_dm):
     return candidates
 
 
-def search_candidates_ell(image, amplitude, x_stddev, x_cos_theta,
+def search_candidates_ell(image, x_stddev, x_cos_theta,
                           y_to_x_stddev, theta_lims, t_0, d_t, d_dm,
-                          save_fig=False):
+                          save_fig=False, amplitude=None):
     a = image.copy()
     s = generate_binary_structure(2, 2)
     # Label image
@@ -155,12 +156,21 @@ def search_candidates_ell(image, amplitude, x_stddev, x_cos_theta,
     # Find objects
     props = regionprops(labeled_array, intensity_image=image)
     candidates = list()
+    if amplitude is None:
+        amplitudes = list()
+        for i, prop in enumerate(props):
+            try:
+                gg = fit_elliplse(prop, plot=False)
+                amplitudes.append(gg.amplitude.value)
+            except NoIntensityRegionException:
+                continue
+        amplitude = find_clusters_ell_amplitudes(amplitudes)
+
     for i, prop in enumerate(props):
         try:
             gg = fit_elliplse(prop, plot=False)
         except NoIntensityRegionException:
             continue
-        # TODO: Subclass Exception for this case
         if ((abs(gg.x_stddev) > abs(x_stddev)) and
                 (abs(gg.x_stddev * np.cos(gg.theta)) > x_cos_theta) and
                 (abs(gg.y_stddev / gg.x_stddev) < y_to_x_stddev) and

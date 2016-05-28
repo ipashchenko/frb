@@ -3,7 +3,7 @@ import numpy as np
 from astropy.time import Time, TimeDelta
 from frb.dyn_spectra import create_from_txt
 from frb.search_candidates import Searcher
-from frb.dedispersion import de_disperse_cumsum
+from frb.dedispersion import de_disperse_cumsum, noncoherent_dedisperse
 from frb.search import (search_candidates, search_candidates_ell,
                         search_candidates_clf, create_ellipses)
 from frb.ml import PulseClassifier
@@ -46,10 +46,11 @@ searcher = Searcher(dsp)
 # Run search for FRB with some parameters of de-dispersion, pre-processing,
 # searching algorithms
 print "using ``search_candidates`` search function..."
-candidates = searcher.run(de_disp_func=de_disperse_cumsum,
+candidates = searcher.run(de_disp_func=noncoherent_dedisperse,
                           search_func=search_candidates,
                           preprocess_func=create_ellipses,
                           de_disp_args=[dm_grid],
+                          de_disp_kwargs={'threads': 4},
                           search_kwargs={'n_d_x': 4., 'n_d_y': 15.,
                                          'd_dm': d_dm},
                           preprocess_kwargs={'disk_size': 3,
@@ -63,15 +64,16 @@ for candidate in candidates:
 # Run search for FRB with same parameters of de-dispersion, but different
 # pre-processing & searching algorithms
 print "using ``search_candidates_ell`` search function..."
-candidates = searcher.run(de_disp_func=de_disperse_cumsum,
+candidates = searcher.run(de_disp_func=noncoherent_dedisperse,
                           search_func=search_candidates_ell,
                           preprocess_func=create_ellipses,
                           de_disp_args=[dm_grid],
+                          de_disp_kwargs={'threads': 4},
                           search_kwargs={'x_stddev': 6., 'y_to_x_stddev': 0.3,
                                          'theta_lims': [130., 180.],
                                          'x_cos_theta': 3.,
                                          'd_dm': d_dm,
-                                         'amplitude': 3.,
+                                         'amplitude': None,
                                          'save_fig': True},
                           preprocess_kwargs={'disk_size': 3,
                                              'threshold_big_perc': 97.5,
@@ -124,11 +126,12 @@ for candidate in candidates:
 print "using ``search_candidates_clf`` search function with GBC..."
 # ICreate classifier class instance
 from sklearn.ensemble import GradientBoostingClassifier
-pclf = PulseClassifier(de_disperse_cumsum, create_ellipses,
+pclf = PulseClassifier(noncoherent_dedisperse, create_ellipses,
                        clf=GradientBoostingClassifier,
-                       clf_kwargs={'verbose': 1, 'n_estimators': 3000,
+                       clf_kwargs={'verbose': 0, 'n_estimators': 3000,
                                    'learning_rate': 0.01},
                        de_disp_args=[dm_grid],
+                       de_disp_kwargs={'threads': 4},
                        preprocess_kwargs={'disk_size': 3,
                                           'threshold_big_perc': 97.5,
                                           'threshold_perc': 97.5,
@@ -155,6 +158,7 @@ candidates = searcher.run(de_disp_func=pclf.de_disp_func,
                           search_func=search_candidates_clf,
                           preprocess_func=pclf.preprocess_func,
                           de_disp_args=pclf.de_disp_args,
+                          de_disp_kwargs=pclf.de_disp_kwargs,
                           preprocess_kwargs=pclf.preprocess_kwargs,
                           search_args=[pclf],
                           search_kwargs={'d_dm': d_dm,

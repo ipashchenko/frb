@@ -3,7 +3,9 @@ import numpy as np
 import os
 import fnmatch
 from sklearn.mixture import DPGMM
+from sklearn.cluster import DBSCAN
 from astropy.stats import mad_std, biweight_location
+from scipy.stats import rayleigh
 
 vround = np.vectorize(round)
 vint = np.vectorize(int)
@@ -57,6 +59,37 @@ def find_noisy(dsp, n_max_components, frac=1, alpha=0.1):
     dsp_classified = y.reshape(dsp.shape)
 
     return components_dict, dsp_classified
+
+
+def find_clusters_ell_amplitudes(amplitudes, eps=0.03, min_samples=10,
+                                 leaf_size=5):
+    """
+
+    :param amplitudes:
+    :param eps:
+    :param min_samples:
+    :param leaf_size:
+    :return:
+    """
+
+    data = np.asarray(amplitudes).copy()
+    data = data.reshape((data.size, 1))
+    data_range = np.max(data) - np.min(data)
+    if eps is None:
+        eps = data_range / np.sqrt(len(amplitudes))
+    db = DBSCAN(eps=eps, min_samples=min_samples, leaf_size=leaf_size).fit(data)
+    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    core_samples_mask[db.core_sample_indices_] = True
+    labels = db.labels_
+    # Number of clusters in labels, ignoring noise if present.
+    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    print "Found {} clusters".format(n_clusters_)
+    unique, unique_counts = np.unique(labels, return_counts=True)
+    largest_cluster_data = data[labels == unique[np.argmax(unique_counts)]]
+    params = rayleigh.fit(largest_cluster_data)
+    distr = rayleigh(loc=params[0], scale=params[1])
+    threshold = distr.ppf(0.99)
+    return threshold
 
 
 def find_robust_gaussian_params(data):

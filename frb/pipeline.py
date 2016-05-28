@@ -82,10 +82,10 @@ class SearchExperiment(object):
             print "t_0 : ", t_0.datetime
 
             metadata.pop('Dspec_file')
-            metadata.update({'antenna': dsp_params['antenna'],
-                             'freq': self.cfx.freq, 'band': dsp_params['band'],
-                             'pol': dsp_params['pol'],
-                             'exp_code': dsp_params['exp_code']})
+            metadata.update({'antenna': m5_params['antenna'],
+                             'freq': self.cfx.freq, 'band': m5_params['band'],
+                             'pol': m5_params['pol'],
+                             'exp_code': m5_params['exp_code']})
             # FIXME: ``2`` means combining U&L bands.
             dsp = DynSpectra(2 * dsp_params['n_nu'], dsarr.shape[0],
                              dsp_params['nu_0'], dsp_params['d_nu'],

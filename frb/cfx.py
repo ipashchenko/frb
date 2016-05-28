@@ -89,14 +89,14 @@ class CFX(object):
                 fmt = re.search('(?<=FORMAT.. = )[A-Za-z0-9_\-]+', block)
                 ifs = re.findall('(?<=IF = )([0-9\.]+\, [RL]\, [UL])', block)
                 files = re.findall('(?<=FILE.. = %P:)([\S]*)', block)
-                ifs = ' '.join(ifs)
-                freq = ifs[0]
-                pol = ifs[1]
-                band = ifs[2]
-                ifs = re.sub('\, ', '-', ifs)
+                print "ifs", ifs
+                cfx_ifs = ' '.join(ifs)
+                cfx_fmt = re.sub('\, ', '-', cfx_ifs)
                 val1 = {'exp_code': code, 'antenna': tname.group(0),
-                        'm5_fmt': fmt.group(0), 'cfx_fmt': ifs.split(),
-                        'freq': freq, 'pol': pol, 'freq': band}
+                        'm5_fmt': fmt.group(0), 'cfx_fmt': cfx_fmt.split(),
+                        'freq': self.freq.lower(),
+                        'band': [if_.split()[2] for if_ in ifs],
+                        'pol': [if_.split()[1] for if_ in ifs]}
                 for f in files:
                     cfxdata.update({f:val1})
         return cfxdata

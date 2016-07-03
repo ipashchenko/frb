@@ -100,7 +100,7 @@ class CFX(object):
                         'm5_fmt': fmt.group(0), 'cfx_fmt': cfx_fmt.split(),
                         'freq': self.freq.lower(),
                         'band': [if_.split()[2] for if_ in ifs],
-                        'pol': [if_.split()[1] for if_ in ifs]}
+                        'pol': [if_.split()[1].strip(',') for if_ in ifs]}
                 for f in files:
                     cfxdata.update({f: val1})
         return cfxdata

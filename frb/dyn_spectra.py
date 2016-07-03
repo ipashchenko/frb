@@ -21,8 +21,9 @@ class MetaData(dict):
 
     meta_keys = ['exp_code', 'antenna', 'freq', 'band', 'pol']
     required_keys = meta_keys
-    meta_values = {'freq': ('k', 'c', 'l', 'p'), 'band': ('u', 'l', 'ul'),
-                   'pol': ('l', 'r', 'lr')}
+    meta_values = {'freq': ('K', 'C', 'L', 'P'),
+                   'band': ('U', 'L', 'UL', 'LU', 'UULL', 'LLUU'),
+                   'pol': ('L', 'R', 'LR', 'LLRR', 'RRLL', 'RLRL')}
 
     def __init__(self, *args, **kwargs):
         super(MetaData, self).__init__()

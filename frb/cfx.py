@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """ Dealing with cfx files """
 
-import os, re, fnmatch
-#from config import config
+import os
+import re
+import fnmatch
+# from config import config
 
 
 # TODO: move this func to tools/utils module
@@ -44,7 +46,9 @@ def get_cfx(cfx_path, code):
     for band in cfx_bands:
         band_list = fnmatch.filter(cfxlist, '*_{}_*'.format(band))
         last_ver.append(os.path.join(cfx_path,
-        sorted(band_list, key=lambda x: CFX(x).version())[-1]))
+                                     sorted(band_list,
+                                            key=lambda x:
+                                            CFX(x).version())[-1]))
     return last_ver
 
 
@@ -82,9 +86,9 @@ class CFX(object):
         blocks = re.split(reg, txt)  # blocks in file
         for ind, block in enumerate(blocks):
             if '[$TLSC]' in block:
-    # TODO: deal with spaces (???)
-#           add full telescope name
-#           WTF with "code : here ???
+                # TODO: deal with spaces (???)
+                # add full telescope name
+                # WTF with "code : here ???
                 tname = re.search('(?<=iam_name = )[A-Za-z]+', block)
                 fmt = re.search('(?<=FORMAT.. = )[A-Za-z0-9_\-]+', block)
                 ifs = re.findall('(?<=IF = )([0-9\.]+\, [RL]\, [UL])', block)
@@ -98,5 +102,5 @@ class CFX(object):
                         'band': [if_.split()[2] for if_ in ifs],
                         'pol': [if_.split()[1] for if_ in ifs]}
                 for f in files:
-                    cfxdata.update({f:val1})
+                    cfxdata.update({f: val1})
         return cfxdata

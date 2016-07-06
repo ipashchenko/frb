@@ -161,7 +161,8 @@ def search_candidates_ell(image, x_stddev, x_cos_theta,
         for i, prop in enumerate(props):
             try:
                 gg = fit_elliplse(prop, plot=False)
-                amplitudes.append(gg.amplitude.value)
+                if gg.amplitude.value:
+                    amplitudes.append(gg.amplitude.value)
             except NoIntensityRegionException:
                 continue
         amplitude = find_clusters_ell_amplitudes(amplitudes)

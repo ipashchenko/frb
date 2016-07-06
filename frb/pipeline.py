@@ -163,7 +163,8 @@ if __name__ == '__main__':
     exp_code = 'raks12ec'
     cfx_file = '/home/ilya/code/frb/frb/RADIOASTRON_RAKS12EC_C_20151030T210000_ASC_V1.cfx'
     raw_data_dir = '/mnt/frb_data/raw_data/2015_303_raks12ec'
-    db_file = '/home/ilya/code/frb/frb/frb.db'
+    db_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                           'frb.db')
     # Step used in de-dispersion
     d_dm = 30.
     # Values of DM to de-disperse

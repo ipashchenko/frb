@@ -19,6 +19,10 @@ $ tar -xvzf data.tgz
 ```
 $ python2 frb/examples/caching.py
 ```
+Searching pulses using fitted elliptical gaussians in ``t-DM`` place is much faster then using ``Gradient Boosting Classifier``. It is because later needs training sample to be constructed & analyzed. Also it finds best parameters of
+classifier using grid of their values. All these steps (training of classifier) must be done only once for small portion of data. 
+Script will create ``png`` plots of found candidates in ``t-DM`` plane in ``frb/examples`` directory and dump data on found candidates and data searched in ``frb/frb/frb.db`` ``SQLite`` database.  
+
 ## Process experiment
 
 - Login to ``frb`` computer with your credientials

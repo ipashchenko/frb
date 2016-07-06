@@ -5,7 +5,10 @@
 ```
 $ git clone https://github.com/akutkin/frb.git
 ```
-- Install dependencies
+- Install dependencies (note that ``scipy`` & ``numpy`` are already installed on ``frb`` computer, so you can skip them there)
+```
+$ pip2 install --user scipy astropy scikit-learn h5py
+```
 
 ## Finding injected pulses in one file
 

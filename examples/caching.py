@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 import numpy as np
 from astropy.time import Time, TimeDelta
+path = os.path.normpath(os.path.join(os.path.dirname(sys.argv[0]), '..'))
+sys.path.insert(0, path)
 from frb.dyn_spectra import create_from_txt
 from frb.search_candidates import Searcher
 from frb.dedispersion import noncoherent_dedisperse
@@ -13,6 +16,8 @@ from frb.ml import PulseClassifier
 # classifiers
 # TODO: Where should i train classifiers?
 
+from frb.candidates import db_file
+print "DB file {}".format(db_file)
 print "Loading dynamical spectra"
 txt = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                    '100_sec_wb_raes08a_128ch.asc')
@@ -84,7 +89,8 @@ candidates = searcher.run(de_disp_func=noncoherent_dedisperse,
                           preprocess_kwargs={'disk_size': 3,
                                              'threshold_big_perc': 97.5,
                                              'threshold_perc': 95.5,
-                                             'statistic': 'mean'})
+                                             'statistic': 'mean'},
+                          db_file=db_file)
 print "Found {} candidates".format(len(candidates))
 for candidate in candidates:
     print candidate
@@ -167,7 +173,8 @@ candidates = searcher.run(de_disp_func=pclf.de_disp_func,
                           preprocess_kwargs=pclf.preprocess_kwargs,
                           search_args=[pclf],
                           search_kwargs={'d_dm': d_dm,
-                                         'save_fig': True})
+                                         'save_fig': True},
+                          db_file=db_file)
 print "Found {} candidates".format(len(candidates))
 for candidate in candidates:
     print candidate

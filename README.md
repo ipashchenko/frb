@@ -5,15 +5,15 @@
 ```
 $ git clone https://github.com/akutkin/frb.git
 ```
-- 
+- Install dependencies
 
 ## Finding injected pulses in one file
 
 - download sample data
 ```
 $ cd frb/examples
-$ wget https://www.dropbox.com/s/ag7rz88kjnblqzv/data.tgz?
-$ tar -cvzf data.tgz
+$ wget https://www.dropbox.com/s/ag7rz88kjnblqzv/data.tgz
+$ tar -xvzf data.tgz
 ```
 - run  script
 ```

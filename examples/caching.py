@@ -3,11 +3,14 @@ import numpy as np
 from astropy.time import Time, TimeDelta
 from frb.dyn_spectra import create_from_txt
 from frb.search_candidates import Searcher
-from frb.dedispersion import de_disperse_cumsum, noncoherent_dedisperse
+from frb.dedispersion import noncoherent_dedisperse
 from frb.search import (search_candidates, search_candidates_ell,
                         search_candidates_clf, create_ellipses)
 from frb.ml import PulseClassifier
 
+# TODO: Automatically find amplitudes of injected pulses used in training of
+# classifiers
+# TODO: Where should i train classifiers?
 
 print "Loading dynamical spectra"
 txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
@@ -15,9 +18,10 @@ meta_data = {'antenna': 'WB', 'freq': 'l', 'band': 'u', 'pol': 'r',
              'exp_code': 'raks00'}
 t0 = Time.now()
 dsp = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data, t0)
+dsp = dsp.slice(0.8, 1)
 print "Start time {}".format(t0)
 # Number of artificially injected pulses
-n_pulses = 20
+n_pulses = 3
 # Step of de-dispersion
 d_dm = 30.
 print "Adding {} pulses".format(n_pulses)
@@ -43,24 +47,24 @@ dm_grid = np.arange(0., 1000., d_dm)
 # Initialize searcher class
 searcher = Searcher(dsp)
 
-# Run search for FRB with some parameters of de-dispersion, pre-processing,
-# searching algorithms
-print "using ``search_candidates`` search function..."
-candidates = searcher.run(de_disp_func=noncoherent_dedisperse,
-                          search_func=search_candidates,
-                          preprocess_func=create_ellipses,
-                          de_disp_args=[dm_grid],
-                          de_disp_kwargs={'threads': 4},
-                          search_kwargs={'n_d_x': 4., 'n_d_y': 15.,
-                                         'd_dm': d_dm},
-                          preprocess_kwargs={'disk_size': 3,
-                                             'threshold_big_perc': 97.5,
-                                             'threshold_perc': 98.5,
-                                             'statistic': 'mean'})
-print "Found {} candidates".format(len(candidates))
-for candidate in candidates:
-    print candidate
-
+# # Run search for FRB with some parameters of de-dispersion, pre-processing,
+# # searching algorithms
+# print "using ``search_candidates`` search function..."
+# candidates = searcher.run(de_disp_func=noncoherent_dedisperse,
+#                           search_func=search_candidates,
+#                           preprocess_func=create_ellipses,
+#                           de_disp_args=[dm_grid],
+#                           de_disp_kwargs={'threads': 4},
+#                           search_kwargs={'n_d_x': 4., 'n_d_y': 15.,
+#                                          'd_dm': d_dm},
+#                           preprocess_kwargs={'disk_size': 3,
+#                                              'threshold_big_perc': 97.5,
+#                                              'threshold_perc': 98.5,
+#                                              'statistic': 'mean'})
+# print "Found {} candidates".format(len(candidates))
+# for candidate in candidates:
+#     print candidate
+#
 # Run search for FRB with same parameters of de-dispersion, but different
 # pre-processing & searching algorithms
 print "using ``search_candidates_ell`` search function..."
@@ -77,7 +81,7 @@ candidates = searcher.run(de_disp_func=noncoherent_dedisperse,
                                          'save_fig': True},
                           preprocess_kwargs={'disk_size': 3,
                                              'threshold_big_perc': 97.5,
-                                             'threshold_perc': 98.5,
+                                             'threshold_perc': 95.5,
                                              'statistic': 'mean'})
 print "Found {} candidates".format(len(candidates))
 for candidate in candidates:
@@ -128,8 +132,7 @@ print "using ``search_candidates_clf`` search function with GBC..."
 from sklearn.ensemble import GradientBoostingClassifier
 pclf = PulseClassifier(noncoherent_dedisperse, create_ellipses,
                        clf=GradientBoostingClassifier,
-                       clf_kwargs={'verbose': 0, 'n_estimators': 3000,
-                                   'learning_rate': 0.01},
+                       clf_kwargs={'verbose': 0, 'n_estimators': 3000},
                        de_disp_args=[dm_grid],
                        de_disp_kwargs={'threads': 4},
                        preprocess_kwargs={'disk_size': 3,
@@ -138,11 +141,11 @@ pclf = PulseClassifier(noncoherent_dedisperse, create_ellipses,
                                           'statistic': 'mean'})
 dsp_training = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data,
                                t_0=Time.now())
-dsp_training = dsp_training.slice(0.2, 0.5)
+dsp_training = dsp_training.slice(0.2, 0.8)
 
 # Generate values of pulses in training sample
 print "Creating training sample"
-n_training_pulses = 50
+n_training_pulses = 100
 amps = np.random.uniform(0.15, 0.25, size=n_training_pulses)
 widths = np.random.uniform(0.001, 0.003, size=n_training_pulses)
 dm_values = np.random.uniform(100, 500, size=n_training_pulses)

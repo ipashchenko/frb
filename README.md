@@ -22,9 +22,14 @@ $ tar -xvzf data.tgz
 ```
 $ python2 caching.py
 ```
+This script will inject pulses in raw data and search for them using two algorithms. Each one begins with non-coherent de-dispersion and pre-processing the resulting ``t-DM`` plane to reduce the noise and exclude some extended regions of atypicaly high amplitude. Blobs of high intensity are found. Next, 2D elliptical gaussians are fitted to regions of individuals blobs in original``t-DM`` plane. First algorithm chooses candidates with auto-selected threshold gaussian amplitudes and some other parameters of gaussians that are specific to narrow dispersed pulses. Second algorithm uses artificially injected pulses to train ``Gradient Boosting Classifier``. It uses features of fitted gaussian as well as numerous blobs properties to build desicion surface in features space.
+
+
 Searching pulses using fitted elliptical gaussians in ``t-DM`` place is much faster then using ``Gradient Boosting Classifier``. It is because later needs training sample to be constructed & analyzed. Also it finds best parameters of
 classifier using grid of their values. All these steps (training of classifier) must be done only once for small portion of data. 
 
+
+Currently, amplitudes of injected pulses in training phase are set by hand. It will be fixed soon by analyzing amplitudes of `noise` pulses in apriori pulse-free small chunk of data.
 
 Script will create ``png`` plots of found candidates in ``t-DM`` plane in ``frb/examples`` directory and dump data on found candidates and data searched in ``frb/frb/frb.db`` ``SQLite`` database.  It can be easily viewed in ``Firefox`` with ``SQLite Manager`` addon.
 

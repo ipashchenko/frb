@@ -2,7 +2,7 @@
 import numpy as np
 import os
 import fnmatch
-from sklearn.mixture import DPGMM
+from sklearn.mixture import DPGMM, GMM
 from sklearn.cluster import DBSCAN
 from astropy.stats import mad_std, biweight_location
 from scipy.stats import rayleigh
@@ -61,8 +61,8 @@ def find_noisy(dsp, n_max_components, frac=1, alpha=0.1):
     return components_dict, dsp_classified
 
 
-def find_clusters_ell_amplitudes(amplitudes, eps=0.03, min_samples=10,
-                                 leaf_size=5):
+def find_clusters_ell_amplitudes(amplitudes, min_samples=10, leaf_size=5,
+                                 eps=None):
     """
 
     :param amplitudes:
@@ -73,27 +73,54 @@ def find_clusters_ell_amplitudes(amplitudes, eps=0.03, min_samples=10,
     :param leaf_size:
         `leaf_size` parameter of `DBSCAN`.
     :return:
-        Threshold for amplitude. Chosen in a way that gaussians with amplitude
-        higher then the threshold should be outliers (signals).
+        Threshold for amplitude. Chosen in a way that fitted elliptical
+        gaussians with amplitude higher then the threshold should be outliers
+        (ie. represent signals).
     """
 
     data = np.asarray(amplitudes).copy()
-    data = data.reshape((data.size, 1))
-    data_range = np.max(data) - np.min(data)
-    if eps is None:
-        eps = data_range / np.sqrt(len(amplitudes))
-    db = DBSCAN(eps=eps, min_samples=min_samples, leaf_size=leaf_size).fit(data)
-    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    core_samples_mask[db.core_sample_indices_] = True
-    labels = db.labels_
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-    print "Found {} clusters".format(n_clusters_)
-    unique, unique_counts = np.unique(labels, return_counts=True)
-    largest_cluster_data = data[labels == unique[np.argmax(unique_counts)]]
-    params = rayleigh.fit(largest_cluster_data)
-    distr = rayleigh(loc=params[0], scale=params[1])
-    threshold = distr.ppf(0.99)
+    ldata = np.log(data)
+    data_ = data.reshape((data.size, 1))
+    ldata_ = ldata.reshape((ldata.size, 1))
+
+    # First fit GMM to log of data. If one cluster is found - use DBSCAN
+    # algorithm to find outliers (possible FRBs). If more then one cluster is
+    # found - then chose the one with highest weight and treat all clusters with
+    # higher amplitude as signals.
+    results = dict()
+    for i in range(1, 5):
+        classif = GMM(n_components=i)
+        classif.fit(ldata_)
+        results.update({classif.bic(ldata_): [i, classif]})
+    min_bic = min(results.keys())
+    i, clf = results[min_bic]
+
+    # If one cluster is favoured
+    if i == 1:
+        data_range = np.max(data) - np.min(data)
+        if eps is None:
+            eps = data_range / len(amplitudes)
+        db = DBSCAN(eps=eps, min_samples=min_samples,
+                    leaf_size=leaf_size).fit(data_)
+        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+        core_samples_mask[db.core_sample_indices_] = True
+        labels = db.labels_
+        # Number of clusters in labels, ignoring noise if present.
+        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+        print "Found {} clusters".format(n_clusters_)
+        unique, unique_counts = np.unique(labels, return_counts=True)
+        largest_cluster_data = data[labels == unique[np.argmax(unique_counts)]]
+        params = rayleigh.fit(largest_cluster_data)
+        distr = rayleigh(loc=params[0], scale=params[1])
+        threshold = distr.ppf(0.99)
+
+    else:
+        # Find cluster with highest weight
+        i_max = np.argmax(clf.weights_)
+        print "Heavsit cluster {}".format(i_max)
+        y = clf.predict(ldata_)
+        print y
+        threshold = np.max(data[y == i_max])
     return threshold
 
 

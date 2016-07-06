@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 from sqlalchemy import (Column, Integer, Float, String, ForeignKey, DateTime)
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -82,7 +83,9 @@ class Candidate(Base):
 
 
 # create a connection to a sqlite database
-engine = create_engine("sqlite:////home/ilya/code/akutkin/frb/frb/frb.db")
+db_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                       'frb.db')
+engine = create_engine("sqlite:///{}".format(db_file))
 
 # This creates tables
 metadata = Base.metadata

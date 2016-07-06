@@ -34,8 +34,8 @@ Currently, amplitudes of injected pulses in training phase are set by hand. It w
 Script will create ``png`` plots of found candidates in ``t-DM`` plane in ``frb/examples`` directory and dump data on found candidates and data searched in ``frb/frb/frb.db`` ``SQLite`` database.  It can be easily viewed in ``Firefox`` with ``SQLite Manager`` addon.
 
 ## Process experiment
-- Clone ``frb`` repository (see Installing)
 - Login to ``frb`` computer with your credientials
+- Clone ``frb`` repository (see Installing)
 - Download experiment CFX-file
 ```
 $ cd frb/frb

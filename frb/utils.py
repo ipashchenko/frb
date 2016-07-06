@@ -67,9 +67,14 @@ def find_clusters_ell_amplitudes(amplitudes, eps=0.03, min_samples=10,
 
     :param amplitudes:
     :param eps:
+        `eps` parameter of `DBSCAN`.
     :param min_samples:
+        `min_samples` parameter of `DBSCAN`.
     :param leaf_size:
+        `leaf_size` parameter of `DBSCAN`.
     :return:
+        Threshold for amplitude. Chosen in a way that gaussians with amplitude
+        higher then the threshold should be outliers (signals).
     """
 
     data = np.asarray(amplitudes).copy()

@@ -216,7 +216,16 @@ def get_ellipse_features_for_classification(image):
                           abs(gg.y_stddev.value), abs(gg.theta.value),
                           abs(gg.x_stddev.value/gg.y_stddev.value),
                           prop.extent, abs(gg.amplitude/prop.mean_intensity),
-                          prop.solidity]
+                          prop.solidity, prop.major_axis_length,
+                          prop.minor_axis_length, prop.perimeter,
+                          prop.max_intensity, prop.mean_intensity,
+                          prop.weighted_moments_hu[0],
+                          prop.weighted_moments_hu[1],
+                          prop.weighted_moments_hu[2], prop.orientation,
+                          prop.inertia_tensor_eigvals[0],
+                          prop.inertia_tensor_eigvals[1], prop.filled_area,
+                          prop.euler_number, prop.eccentricity,
+                          prop.convex_area]
 
     return features
 

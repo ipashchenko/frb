@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import numpy as np
 from astropy.time import Time, TimeDelta
 from frb.dyn_spectra import create_from_txt
@@ -13,8 +14,9 @@ from frb.ml import PulseClassifier
 # TODO: Where should i train classifiers?
 
 print "Loading dynamical spectra"
-txt = '/home/ilya/code/akutkin/frb/data/100_sec_wb_raes08a_128ch.asc'
-meta_data = {'antenna': 'WB', 'freq': 'l', 'band': 'u', 'pol': 'r',
+txt = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                   '100_sec_wb_raes08a_128ch.asc')
+meta_data = {'antenna': 'WB', 'freq': 'L', 'band': 'U', 'pol': 'R',
              'exp_code': 'raks00'}
 t0 = Time.now()
 dsp = create_from_txt(txt, 1684., 16. / 128, 0.001, meta_data, t0)

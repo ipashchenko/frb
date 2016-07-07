@@ -66,8 +66,11 @@ $ python2 pipeline.py
 Script processes experiment (``raks12ec``, C-band, Noto & Yebes radiotelescopes). Results on data searched & pulse candidates are dumped to ``frb/frb/frb.db`` ``SQLite`` database. Finally, script check DB to find close (in time & DM) pulse candidates among searched antennas.
 
 ## Using ``docker``
-- Install ``docker`` package
-- Run container with image
+
+Using ``docker`` no need to install any packages except ``docker`` itself
+
+- Install ``docker`` package on your machine
+- Run container with image. It will take some time to download image with preinstalled software.
 ```
 $ docker run -it -v host_dir:/home/frb-dev/data ipashchenko/frb /bin/bash
 ```

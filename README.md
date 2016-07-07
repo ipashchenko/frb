@@ -58,7 +58,7 @@ $ cd ../my5spec; /usr/bin/make
 $ cd ../frb
 $ python2 pipeline.py
 ```
-Results on data searched & pulse candidates can be found in ``frb/frb/frb.db`` ``SQLite`` database.
+Script processes experiment (``raks12ec``, C-band, Noto & Yebes radiotelescopes). Results on data searched & pulse candidates are dumped to ``frb/frb/frb.db`` ``SQLite`` database. Finally, script check DB to find close (in time & DM) pulse candidates among searched antennas.
 
-
+## TODOs
 Currently, ``my5spec`` fails to read raw data with some format (see issue [#7](https://github.com/akutkin/frb/issues/7)) and fails to read ends of files (see issue [#13](https://github.com/akutkin/frb/issues/13))

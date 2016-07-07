@@ -20,8 +20,11 @@ setup(
     install_requires=[
         "numpy >= 1.7.2",
         "scipy >= 0.12.0",
+        "matplotlib",
+        "sqlalchemy",
         "astropy",
-        "sklearn",
+        "scikit-learn",
+        "scikit-image",
         "ftputil",
         "h5py"
     ],)

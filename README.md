@@ -13,7 +13,7 @@ $ unzip master.zip
 $ python2 virtualenv-master/virtualenv.py ./venv
 $ source venv/bin/activate
 ```
-- Install dependencies (note that ``scipy`` & ``numpy`` are already installed on ``frb`` computer, so you can skip them there)
+- Install dependencies
 ```
 $ pip2 install scipy astropy scikit-learn scikit-image matplotlib h5py sqlalchemy
 ```

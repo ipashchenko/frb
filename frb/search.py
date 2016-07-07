@@ -273,6 +273,9 @@ def create_ellipses(tdm_image, disk_size=3, threshold_big_perc=97.5,
         image = statistic_dict[statistic](image, disk_size)
         threshold = np.percentile(image.ravel(), threshold_big_perc)
         image[image < threshold] = 0
+        # FIXME: In ubuntu 16.04 this raises ``ValueError: Images of type float
+        # must be between -1 and 1.`` Upgrading to newer ``skimage`` solved the
+        # problem
         image = opening(image, opening_selem)
 
         # FInd BIG regions & exclude them in original ``tdm_image``. Then redo

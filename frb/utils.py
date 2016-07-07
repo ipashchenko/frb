@@ -107,7 +107,6 @@ def find_clusters_ell_amplitudes(amplitudes, min_samples=10, leaf_size=5,
         labels = db.labels_
         # Number of clusters in labels, ignoring noise if present.
         n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-        print "Found {} clusters".format(n_clusters_)
         unique, unique_counts = np.unique(labels, return_counts=True)
         largest_cluster_data = data[labels == unique[np.argmax(unique_counts)]]
         params = rayleigh.fit(largest_cluster_data)
@@ -117,9 +116,7 @@ def find_clusters_ell_amplitudes(amplitudes, min_samples=10, leaf_size=5,
     else:
         # Find cluster with highest weight
         i_max = np.argmax(clf.weights_)
-        print "Heavsit cluster {}".format(i_max)
         y = clf.predict(ldata_)
-        print y
         threshold = np.max(data[y == i_max])
     return threshold
 

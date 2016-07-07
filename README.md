@@ -43,7 +43,7 @@ Script will create ``png`` plots of found candidates in ``t-DM`` plane in ``frb/
 
 ## Process experiment
 - Login to ``frb`` computer with your credientials
-- Clone ``frb`` repository (see Installing)
+- Clone ``frb`` repository, install virtual environment & dependencies (see Installing)
 - Download experiment CFX-file
 ```
 $ cd frb/frb

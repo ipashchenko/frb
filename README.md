@@ -15,7 +15,7 @@ $ source venv/bin/activate
 ```
 - Install dependencies (note that ``scipy`` & ``numpy`` are already installed on ``frb`` computer, so you can skip them there)
 ```
-$ pip2 install scipy astropy scikit-learn h5py
+$ pip2 install scipy astropy scikit-learn scikit-image matplotlib h5py sqlalchemy
 ```
 
 ## Finding injected pulses in one file

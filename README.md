@@ -5,16 +5,24 @@
 ```
 $ git clone https://github.com/akutkin/frb.git
 ```
+- Create virtual environment for installing dependencies
+```
+$ cd frb
+$ wget https://github.com/pypa/virtualenv/archive/master.zip
+$ unzip master.zip
+$ python2 virtualenv-master/virtualenv.py ./venv
+$ source venv/bin/activate
+```
 - Install dependencies (note that ``scipy`` & ``numpy`` are already installed on ``frb`` computer, so you can skip them there)
 ```
-$ pip2 install --user scipy astropy scikit-learn h5py
+$ pip2 install scipy astropy scikit-learn h5py
 ```
 
 ## Finding injected pulses in one file
 
 - download sample data
 ```
-$ cd frb/examples
+$ cd examples
 $ wget https://www.dropbox.com/s/ag7rz88kjnblqzv/data.tgz
 $ tar -xvzf data.tgz
 ```

@@ -67,7 +67,7 @@ Script processes experiment (``raks12ec``, C-band, Noto & Yebes radiotelescopes)
 
 ## Using ``docker``
 
-Using ``docker`` no need to install any packages except ``docker`` itself
+There's no need to install any packages except ``docker`` itself
 
 - Install ``docker`` package on your machine
 - Run container with image. It will take some time to download image with preinstalled software.

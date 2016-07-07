@@ -65,5 +65,25 @@ $ python2 pipeline.py
 ```
 Script processes experiment (``raks12ec``, C-band, Noto & Yebes radiotelescopes). Results on data searched & pulse candidates are dumped to ``frb/frb/frb.db`` ``SQLite`` database. Finally, script check DB to find close (in time & DM) pulse candidates among searched antennas.
 
+## Using ``docker``
+- Install ``docker`` package
+- Run container with image
+```
+$ docker run -it -v host_dir:/home/frb-dev/data ipashchenko/frb /bin/bash
+```
+- Inside container load data and start script
+```
+# cd frb-dev/examples
+# wget https://www.dropbox.com/s/ag7rz88kjnblqzv/data.tgz
+# tar -xvzf data.tgz
+# python2 caching.py
+```
+- After it's execution copy results (images & DB file) to mounted dirrectory
+```
+# cp *.png ../data/.
+# cp ../frb/frb.db ../data/.
+```
+- Results can be viewed in host ``host_dir``
+
 ## TODOs
 Currently, ``my5spec`` fails to read raw data with some format (see issue [#7](https://github.com/akutkin/frb/issues/7)) and fails to read ends of files (see issue [#13](https://github.com/akutkin/frb/issues/13))

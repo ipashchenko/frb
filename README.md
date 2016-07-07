@@ -5,7 +5,7 @@
 ```
 $ git clone https://github.com/akutkin/frb.git
 ```
-- Create virtual environment for installing dependencies
+- Create & activate virtual environment for installing dependencies
 ```
 $ cd frb
 $ wget https://github.com/pypa/virtualenv/archive/master.zip
@@ -13,7 +13,7 @@ $ unzip master.zip
 $ python2 virtualenv-master/virtualenv.py ./venv
 $ source venv/bin/activate
 ```
-- Install dependencies
+- Install dependencies inside virtual environment
 ```
 $ pip2 install scipy astropy scikit-learn scikit-image matplotlib h5py sqlalchemy
 ```
@@ -30,6 +30,11 @@ $ tar -xvzf data.tgz
 ```
 $ python2 caching.py
 ```
+
+- deactivate virtual environment
+```
+$ deactivate
+```
 This script will inject pulses in raw data and search for them using two algorithms. Each one begins with non-coherent de-dispersion and pre-processing the resulting ``t-DM`` plane to reduce the noise and exclude some extended regions of atypicaly high amplitude. Blobs of high intensity are found. Next, 2D elliptical gaussians are fitted to regions of individuals blobs in original``t-DM`` plane. First algorithm chooses candidates with auto-selected threshold gaussian amplitudes and some other parameters of gaussians that are specific to narrow dispersed pulses. Second algorithm uses artificially injected pulses to train ``Gradient Boosting Classifier``. It uses features of fitted gaussians as well as numerous blob properties to build desicion surface in features space.
 
 
@@ -43,7 +48,7 @@ Script will create ``png`` plots of found candidates in ``t-DM`` plane in ``frb/
 
 ## Process experiment
 - Login to ``frb`` computer with your credientials
-- Clone ``frb`` repository, install virtual environment & dependencies (see Installing)
+- Clone ``frb`` repository, install virtual environment, activate it & install dependencies inside virtual environment (see Installing)
 - Download experiment CFX-file
 ```
 $ cd frb/frb

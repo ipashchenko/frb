@@ -7,7 +7,9 @@ from utils import vint, vround, read_hdf5
 from astropy.time import Time, TimeDelta
 
 try:
-    import matplotlib.pyplot as plt
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot
 except ImportError:
     plt = None
 
@@ -259,19 +261,19 @@ class DynSpectra(object):
     # TODO: if one choose what channels to plot - use ``extent`` kwarg.
     def plot(self, plot_indexes=True, savefig=None):
         if plt is not None:
-            plt.figure()
-            plt.matshow(self.values, aspect='auto')
-            plt.colorbar()
+            matplotlib.pyplot.figure()
+            matplotlib.pyplot.matshow(self.values, aspect='auto')
+            matplotlib.pyplot.colorbar()
             if not plot_indexes:
                 raise NotImplementedError("Ticks haven't implemented yet")
                 # plt.xticks(np.linspace(0, 999, 10, dtype=int),
                 # frame.t[np.linspace(0, 999, 10, dtype=int)])
-            plt.xlabel("time steps")
-            plt.ylabel("frequency ch. #")
-            plt.title('Dynamical spectra')
+            matplotlib.pyplot.xlabel("time steps")
+            matplotlib.pyplot.ylabel("frequency ch. #")
+            matplotlib.pyplot.title('Dynamical spectra')
             if savefig is not None:
-                plt.savefig(savefig, bbox_inches='tight')
-            plt.show()
+                matplotlib.pyplot.savefig(savefig, bbox_inches='tight')
+            matplotlib.pyplot.show()
 
     def add_pulse(self, t_0, amp, width, dm):
         """

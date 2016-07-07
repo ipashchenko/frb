@@ -8,7 +8,8 @@ from candidates import Candidate
 from utils import find_clusters_ell_amplitudes
 from astropy.time import TimeDelta
 from astropy.modeling import models, fitting
-import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 
 
 class NoIntensityRegionException(Exception):
@@ -333,9 +334,9 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None,
     #     np.rad2deg(gg.theta) % 180
 
     if plot:
-        fig, ax = plt.subplots(1, 1)
+        fig, ax = matplotlib.pyplot.subplots(1, 1)
         ax.hold(True)
-        im = ax.matshow(data, cmap=plt.cm.jet)
+        im = ax.matshow(data, cmap=matplotlib.pyplot.cm.jet)
         model = gg.evaluate(x, y, gg.amplitude, gg.x_mean, gg.y_mean,
                             gg.x_stddev, gg.y_stddev, gg.theta)
         try:
@@ -355,7 +356,7 @@ def fit_elliplse(prop, plot=False, save_file=None, colorbar_label=None,
         if show:
             fig.show()
         if close:
-            plt.close()
+            matplotlib.pyplot.close()
 
     return gg
 
